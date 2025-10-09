@@ -1,6 +1,6 @@
 const { Schema, model } = require("mongoose");
 
-const drivesSchema = new Schema(
+const carsSchema = new Schema(
   {
     title: { type: String, required: true },
     number: { type: String, required: true },
@@ -30,4 +30,4 @@ const drivesSchema = new Schema(
   }
 );
 
-module.exports = model("cars", drivesSchema);
+module.exports = model("cars", carsSchema);

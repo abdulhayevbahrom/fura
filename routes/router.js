@@ -20,6 +20,7 @@ router.get("/cars/:id", carsController.getCarById);
 router.post("/cars/create", carsValidation, carsController.createCar);
 router.delete("/cars/delete/:id", carsController.deleteCar);
 router.put("/cars/update/:id", carsValidation, carsController.updateCar);
+router.patch("/cars/change-vehicles/", carsController.changeVehicles);
 
 // TRAILERS
 const trailerController = require("../controller/trailerController");

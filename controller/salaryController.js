@@ -45,7 +45,7 @@ class SalaryController {
       if (!newSalary) {
         return response.error(res, "Malumot saqlanmadi");
       }
-      return response.success(
+      return response.created(
         res,
         "Ma'lumot muvaffaqiyatli saqlandi",
         newSalary
