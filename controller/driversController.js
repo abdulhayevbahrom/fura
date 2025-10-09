@@ -15,6 +15,26 @@ class DriversController {
     }
   }
 
+  async getRoles(req, res) {
+    try {
+      const categories = await Drivers.aggregate([
+        { $match: { category: { $exists: true, $ne: "" } } }, // faqat to‘ldirilganlar
+        { $group: { _id: "$role" } }, // unikal kategoriya
+        { $sort: { _id: 1 } }, // tartiblash
+      ]);
+
+      const result = categories.map((c) => c._id);
+
+      if (!result.length) {
+        return response.notFound(res, "Rollar topilmadi", []);
+      }
+
+      return response.success(res, "Rollar ro'yxati", result);
+    } catch (error) {
+      return response.serverError(res, error.message, error);
+    }
+  }
+
   async getDriverById(req, res) {
     try {
       const driver = await Drivers.findOne({

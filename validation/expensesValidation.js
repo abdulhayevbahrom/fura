@@ -25,15 +25,21 @@ const expenseValidation = (req, res, next) => {
         pattern: "^[0-9a-fA-F]{24}$",
       },
       description: { type: "string" },
-      car: { type: "string", pattern: "^[0-9a-fA-F]{24}$" },
+      car: { type: "string" },
+      trailer: { type: "string" },
       quantity: { type: "number", minimum: 1 },
       category: { type: "string" },
       type: {
         type: "string",
         enum: ["repair", "order_expense", "office_expense"],
       },
+      paymentType: {
+        type: "string",
+        enum: ["naqd", "karta"],
+        default: "naqd",
+      },
     },
-    required: ["name", "amount", "category", "type"],
+    required: ["name", "amount", "category", "type", "paymentType"],
     additionalProperties: false,
     errorMessage: {
       required: {
@@ -41,12 +47,15 @@ const expenseValidation = (req, res, next) => {
         amount: "Xarajat summasi kiritilishi shart",
         category: "Xarajat kategoriyasi kiritilishi shart",
         type: "Xarajat turi kiritilishi shart, repair yoki order_expense yoki office_expense bo'lishi kerak",
+        paymentType:
+          "To'lov turi kiritilishi shart, naqd yoki karta bo'lishi kerak",
       },
       properties: {
         name: "Xarajat nomi kamida 1 ta belgidan iborat bo'lishi kerak",
         amount: "Xarajat summasi musbat son bo'lishi kerak",
         category: "Xarajat kategoriyasi kiritilishi shart",
         type: "Xarajat turi repair yoki order_expense yoki office_expense bo'lishi kerak",
+        paymentType: "To'lov turi naqd yoki karta bo'lishi kerak",
       },
       additionalProperties: "Ruxsat etilmagan maydon kiritildi",
     },

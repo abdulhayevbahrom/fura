@@ -25,7 +25,8 @@ class ExpensesController {
 
       let repairs = await Expense.find(filter)
         .sort({ createdAt: -1 })
-        .populate("car")
+        .populate("car", "title number")
+        .populate("trailer", "number")
         .populate("order_id");
       if (!repairs.length) {
         return response.notFound(res, "Harajatlar topilmadi");
@@ -100,13 +101,15 @@ class ExpensesController {
   async create(req, res) {
     try {
       const { order_id } = req.body;
-      const order = await Order.findOne({
-        _id: order_id,
-        state: { $ne: "finished" },
-        deleted: false,
-      });
-      if (!order) {
-        return response.notFound(res, "Buyurtma topilmadi");
+      if (req.body.type === "order_expense") {
+        const order = await Order.findOne({
+          _id: order_id,
+          state: { $ne: "finished" },
+          deleted: false,
+        });
+        if (!order) {
+          return response.notFound(res, "Buyurtma topilmadi");
+        }
       }
       const newExpense = await Expense.create(req.body);
       return response.created(res, "Xarajat qo'shildi", newExpense);
@@ -132,12 +135,13 @@ class ExpensesController {
   async update(req, res) {
     try {
       // check order
-      if (req.body.order_id) {
+      if (req.body.type === "order_expense") {
         const order = await Order.findOne({
           _id: req.body.order_id,
           state: { $ne: "finished" },
           deleted: false,
         });
+
         if (!order) {
           return response.notFound(
             res,

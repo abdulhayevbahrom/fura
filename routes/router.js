@@ -43,6 +43,7 @@ const drivesController = require("../controller/driversController");
 const drivesValidation = require("../validation/driversValidation");
 
 router.post("/drivers/login", drivesController.login);
+router.get("/drivers/roles", drivesController.getRoles);
 router.get("/drivers/all", drivesController.getDrivers);
 router.get("/drivers/:id", drivesController.getDriverById);
 router.post("/drivers/create", drivesValidation, drivesController.createDriver);
