@@ -107,9 +107,11 @@ class ExpensesController {
           state: { $ne: "finished" },
           deleted: false,
         });
+
         if (!order) {
           return response.notFound(res, "Buyurtma topilmadi");
         }
+        req.body.part_id = order.part_id;
       }
       const newExpense = await Expense.create(req.body);
       return response.created(res, "Xarajat qo'shildi", newExpense);

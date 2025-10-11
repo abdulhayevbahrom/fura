@@ -9,6 +9,7 @@ const expenseSchema = new Schema(
       enum: ["owner", "client", "expense"],
     },
     order_id: { type: Schema.Types.ObjectId, ref: "orders" },
+    part_id: { type: Schema.Types.ObjectId, ref: "parts", default: null },
     description: { type: String, default: "" },
     deleted: { type: Boolean, default: false },
     paymentType: { type: String, enum: ["naqd", "karta"], default: "naqd" },

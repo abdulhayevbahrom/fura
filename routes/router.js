@@ -141,4 +141,7 @@ router.put(
 );
 router.delete("/salaries/delete/:id", salaryController.deleteSalary);
 
+// DASHBOARD
+const dashboardController = require("../controller/dashboardController");
+router.get("/dashboard", dashboardController.getDashboardData);
 module.exports = router;
