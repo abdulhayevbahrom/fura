@@ -22,7 +22,6 @@ const driversValidation = (req, res, next) => {
       role: {
         type: "string",
         default: "driver",
-        required: true,
       },
     },
     required: [

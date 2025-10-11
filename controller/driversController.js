@@ -17,13 +17,13 @@ class DriversController {
 
   async getRoles(req, res) {
     try {
-      const categories = await Drivers.aggregate([
-        { $match: { category: { $exists: true, $ne: "" } } }, // faqat to‘ldirilganlar
-        { $group: { _id: "$role" } }, // unikal kategoriya
-        { $sort: { _id: 1 } }, // tartiblash
+      const roles = await Drivers.aggregate([
+        { $match: { role: { $exists: true, $ne: "" } } }, // faqat role mavjud va bo'sh emas
+        { $group: { _id: "$role" } }, // unikal rollar
+        { $sort: { _id: 1 } }, // tartiblash alfavit bo‘yicha
       ]);
 
-      const result = categories.map((c) => c._id);
+      const result = roles.map((r) => r._id);
 
       if (!result.length) {
         return response.notFound(res, "Rollar topilmadi", []);

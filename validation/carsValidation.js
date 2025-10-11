@@ -8,34 +8,107 @@ const carsValidation = (req, res, next) => {
   const schema = {
     type: "object",
     properties: {
-      title: { type: "string" },
-      number: { type: "string" },
-      year: { type: "number" },
-      fuelFor100km: { type: "number" },
-      probeg: { type: "number" },
+      title: { type: "string", minLength: 1 },
+      number: { type: "string", minLength: 1 },
+      year: { type: "number", minimum: 1900, maximum: 2100 },
+      fuelFor100km: { type: "number", minimum: 0 },
+      probeg: { type: "number", minimum: 0 },
       vehicles: {
         type: "object",
         properties: {
-          right_front: { type: "array", items: { type: "string" } },
-          left_front: { type: "array", items: { type: "string" } },
-          right_back: { type: "array", items: { type: "string" } },
-          left_back: { type: "array", items: { type: "string" } },
-          back_right_in: { type: "array", items: { type: "string" } },
-          back_left_in: { type: "array", items: { type: "string" } },
+          right_front: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          left_front: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          right_back: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          left_back: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          back_right_in: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          back_left_in: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
         },
+        additionalProperties: false,
       },
       cpu: {
-        type: "object",
-        properties: {
-          marka: { type: "string" },
-          model: { type: "string" },
-          year: { type: "number" },
-          number: { type: "string" },
+        type: "array",
+        minItems: 1,
+        items: {
+          type: "object",
+          properties: {
+            marka: { type: "string", minLength: 1 },
+            model: { type: "string", minLength: 1 },
+            year: { type: "number", minimum: 1900, maximum: 2100 },
+            number: { type: "string", minLength: 1 },
+          },
+          required: ["marka", "model", "year", "number"],
+          additionalProperties: false,
         },
-        required: ["marka", "model", "year", "number"],
       },
-      licens: { type: "string" },
-      sugurta: { type: "string" },
+      licens: { type: "string", minLength: 1 },
+      sugurta: { type: "string", minLength: 1 },
+      status: { type: "boolean" },
     },
     required: [
       "title",
@@ -43,8 +116,6 @@ const carsValidation = (req, res, next) => {
       "year",
       "fuelFor100km",
       "probeg",
-      "vehicles",
-      "cpu",
       "licens",
       "sugurta",
     ],
@@ -54,24 +125,22 @@ const carsValidation = (req, res, next) => {
         title: "Nomi kiritish shart",
         number: "Raqami kiritish shart",
         year: "Yili kiritish shart",
-        fuelFor100km: "Yoqilgi sarfi 100 km uchun kiritish shart",
-        probeg: "Probel kiritish shart",
-        vehicles: "g'ildiraklar kiritish shart",
-        cpu: "cpu kiritish shart",
-        licens: "licens kiritish shart",
-        sugurta: "sugurta kiritish shart",
+        fuelFor100km: "Yoqilgi sarfi kiritish shart",
+        probeg: "Probeg kiritish shart",
+        cpu: "CPU kiritish shart (kamida 1 ta)",
+        licens: "Litsenziya kiritish shart",
+        sugurta: "Sug'urta kiritish shart",
       },
       properties: {
-        title: "Nomi string bo'lishi kerak",
-        number: "Raqami string bo'lishi kerak",
-        year: "Yili 4 ta belgi oralig'ida bo'lishi kerak",
-        fuelFor100km:
-          "Yoqilgi sarfi 100 km uchun 0 yoki undan katta bo'lishi kerak",
-        probeg: "Probel 0 yoki undan katta bo'lishi kerak raqam turida bolsin",
-        vehicles: "g'ildiraklar maydoni noto'g'ri formatda",
-        cpu: "cpu maydoni noto'g'ri formatda",
-        licens: "licens maydoni noto'g'ri formatda",
-        sugurta: "sugurta maydoni noto'g'ri formatda",
+        title: "Nomi bo'sh bo'lmasligi kerak",
+        number: "Raqami bo'sh bo'lmasligi kerak",
+        year: "Yili 1900 va 2100 oralig'ida bo'lishi kerak",
+        fuelFor100km: "Yoqilgi sarfi 0 yoki undan katta bo'lishi kerak",
+        probeg: "Probeg 0 yoki undan katta bo'lishi kerak",
+        cpu: "CPU kamida 1 ta bo'lishi va to'g'ri formatda bo'lishi kerak",
+        licens: "Litsenziya bo'sh bo'lmasligi kerak",
+        sugurta: "Sug'urta bo'sh bo'lmasligi kerak",
+        status: "Status boolean bo'lishi kerak",
       },
       additionalProperties: "Ruxsat etilmagan maydon kiritildi",
     },
@@ -81,10 +150,11 @@ const carsValidation = (req, res, next) => {
   const result = validate(req.body);
 
   if (!result) {
-    const errorField =
-      validate.errors[0].instancePath.replace("/", "") || "Umumiy";
-    const errorMessage = validate.errors[0].message;
-    return response.error(res, `${errorField} xato: ${errorMessage}`);
+    const errors = validate.errors.map((err) => {
+      const field = err.instancePath.replace("/", "") || "Umumiy";
+      return `${field}: ${err.message}`;
+    });
+    return response.error(res, errors.join(", "));
   }
 
   next();

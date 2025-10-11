@@ -15,12 +15,30 @@ router.delete("/admin/delete/:id", adminController.deleteAdmin);
 const carsController = require("../controller/carsController");
 const carsValidation = require("../validation/carsValidation");
 
+// router.get("/cars/all", carsController.getAllCars);
+// router.get("/cars/:id", carsController.getCarById);
+// router.post("/cars/create", carsValidation, carsController.createCar);
+// router.delete("/cars/delete/:id", carsController.deleteCar);
+// router.put("/cars/update/:id", carsValidation, carsController.updateCar);
+// router.put("/cars/change-vehicles/", carsController.changeVehicles);
+// router.delete("/cars/delete-vehicle", carsController.deleteVehicle);
+// router.put("/cars/update-vehicle", carsController.updateVehicle);
+// router.put("/cars/update-cpu", carsController.updateCPU);
+
+// CARS - Asosiy CRUD operatsiyalar
 router.get("/cars/all", carsController.getAllCars);
 router.get("/cars/:id", carsController.getCarById);
 router.post("/cars/create", carsValidation, carsController.createCar);
-router.delete("/cars/delete/:id", carsController.deleteCar);
 router.put("/cars/update/:id", carsValidation, carsController.updateCar);
-router.patch("/cars/change-vehicles/", carsController.changeVehicles);
+router.delete("/cars/delete/:id", carsController.deleteCar);
+
+// // CARS - Vehicles (Gildiraklar) boshqaruvi
+router.put("/cars/change-vehicles", carsController.changeVehicles);
+router.put("/cars/update-vehicle", carsController.updateVehicle);
+
+// CARS - CPU boshqaruvi
+router.put("/cars/change-cpu", carsController.addCPU);
+router.put("/cars/update-cpu", carsController.updateCPU);
 
 // TRAILERS
 const trailerController = require("../controller/trailerController");

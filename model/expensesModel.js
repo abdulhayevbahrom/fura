@@ -17,6 +17,8 @@ const expenseSchema = new Schema(
     quantity: { type: Number, default: 1 },
     category: { type: String, default: "boshqa" }, // kategoriya qaysi qismiligi
     type: { type: String, enum: ["repair", "order_expense", "office_expense"] },
+    vehicleId: { type: String, default: null },
+    cpuId: { type: String, default: null },
   },
   {
     timestamps: true,
