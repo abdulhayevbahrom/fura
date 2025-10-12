@@ -5,7 +5,7 @@ const Order = require("../model/orderModel");
 class ExpensesController {
   async getAll(req, res) {
     try {
-      let { startDate, endDate, category, car, type } = req.query;
+      let { startDate, endDate, category, car, type, from } = req.query;
       let filter = { deleted: false };
       if (startDate && endDate) {
         filter.createdAt = {
@@ -21,6 +21,9 @@ class ExpensesController {
       }
       if (type) {
         filter.type = type;
+      }
+      if (from) {
+        filter.from = from;
       }
 
       let repairs = await Expense.find(filter)
@@ -101,7 +104,8 @@ class ExpensesController {
   async create(req, res) {
     try {
       const { order_id } = req.body;
-      if (req.body.type === "order_expense") {
+      let order = await Order.findOne({ _id: order_id, deleted: false });
+      if (req.body.type === "order_expense" && req.body.from !== "client") {
         const order = await Order.findOne({
           _id: order_id,
           state: { $ne: "finished" },
@@ -113,6 +117,35 @@ class ExpensesController {
         }
         req.body.part_id = order.part_id;
       }
+
+      let totalPayments = await Expense.find({
+        order_id: order_id,
+        type: "order_expense",
+        deleted: false,
+        from: "client",
+      });
+
+      let totalPaymentSum = totalPayments?.reduce((acc, expense) => {
+        return acc + expense.amount;
+      }, 0);
+
+      if (totalPaymentSum >= order?.totalPrice) {
+        return response.error(res, "Buyurtma to'ldirilgan");
+      }
+
+      if (
+        req.body.type === "order_expense" &&
+        req.body.from === "client" &&
+        order?.totalPrice - totalPaymentSum < req.body.amount
+      ) {
+        return response.error(
+          res,
+          `ortiqcha summa kiritildi, ${
+            order?.totalPrice - totalPaymentSum
+          } summa qoldi`
+        );
+      }
+
       const newExpense = await Expense.create(req.body);
       return response.created(res, "Xarajat qo'shildi", newExpense);
     } catch (error) {

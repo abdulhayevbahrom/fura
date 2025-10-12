@@ -56,6 +56,8 @@ router.put(
   trailerValidation,
   trailerController.updateTrailer
 );
+router.put("/trailers/change-vehicles", trailerController.changeVehicles);
+router.put("/trailers/update-vehicle", trailerController.updateVehicle);
 
 // DRIVERS
 const drivesController = require("../controller/driversController");

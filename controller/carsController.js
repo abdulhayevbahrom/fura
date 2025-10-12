@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 class carsController {
   async getAllCars(req, res) {
     try {
-      const cars = await Cars.find();
+      const cars = await Cars.find({});
       if (!cars.length)
         return response.notFound(res, "Mashinalar topilmadi", []);
       return response.success(res, "Mashinalar topildi", cars);

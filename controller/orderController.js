@@ -3,7 +3,6 @@ const Orders = require("../model/orderModel");
 const mongoose = require("mongoose");
 const Drivers = require("../model/driversModel");
 const Cars = require("../model/carModel");
-const Trailers = require("../model/trailerModel");
 const Parts = require("../model/partModel");
 
 class OrderController {

@@ -12,12 +12,78 @@ const trailerValidation = (req, res, next) => {
       vehicles: {
         type: "object",
         properties: {
-          left_front: { type: "array", items: { type: "string" } },
-          right_front: { type: "array", items: { type: "string" } },
-          left_back: { type: "array", items: { type: "string" } },
-          right_back: { type: "array", items: { type: "string" } },
-          left_center: { type: "array", items: { type: "string" } },
-          right_center: { type: "array", items: { type: "string" } },
+          left_front: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          right_front: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          left_back: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          right_back: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          left_center: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
+          right_center: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", minLength: 1 },
+                price: { type: "number", minimum: 0 },
+              },
+              required: ["name", "price"],
+              additionalProperties: false,
+            },
+          },
         },
       },
     },
