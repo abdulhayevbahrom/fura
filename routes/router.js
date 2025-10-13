@@ -15,16 +15,6 @@ router.delete("/admin/delete/:id", adminController.deleteAdmin);
 const carsController = require("../controller/carsController");
 const carsValidation = require("../validation/carsValidation");
 
-// router.get("/cars/all", carsController.getAllCars);
-// router.get("/cars/:id", carsController.getCarById);
-// router.post("/cars/create", carsValidation, carsController.createCar);
-// router.delete("/cars/delete/:id", carsController.deleteCar);
-// router.put("/cars/update/:id", carsValidation, carsController.updateCar);
-// router.put("/cars/change-vehicles/", carsController.changeVehicles);
-// router.delete("/cars/delete-vehicle", carsController.deleteVehicle);
-// router.put("/cars/update-vehicle", carsController.updateVehicle);
-// router.put("/cars/update-cpu", carsController.updateCPU);
-
 // CARS - Asosiy CRUD operatsiyalar
 router.get("/cars/all", carsController.getAllCars);
 router.get("/cars/:id", carsController.getCarById);
@@ -79,11 +69,17 @@ router.put("/drivers/status/:id", drivesController.changeStatus);
 // ORDERS
 const orderController = require("../controller/orderController");
 const orderValidation = require("../validation/orderValidation");
+const orderValidationByPartId = require("../validation/orderValidationByPartId");
 
 router.get("/orders/all", orderController.getOrders);
 router.get("/orders/:id", orderController.getOrderById);
 router.get("/orders/driver/:driver_id", orderController.getOrdersByDriverId);
 router.post("/orders/create", orderValidation, orderController.createOrder);
+router.post(
+  "/orders/create-by-part",
+  orderValidationByPartId,
+  orderController.createOrderByPartId
+);
 router.put("/orders/update/:id", orderValidation, orderController.updateOrder);
 router.delete("/orders/delete/:id", orderController.deleteOrder);
 router.put("/orders/state/:id", orderController.changeState);

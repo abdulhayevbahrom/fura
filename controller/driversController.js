@@ -24,11 +24,7 @@ class DriversController {
       ]);
 
       const result = roles.map((r) => r._id);
-
-      if (!result.length) {
-        return response.notFound(res, "Rollar topilmadi", []);
-      }
-
+      result.unshift("driver");
       return response.success(res, "Rollar ro'yxati", result);
     } catch (error) {
       return response.serverError(res, error.message, error);

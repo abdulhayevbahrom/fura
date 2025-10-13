@@ -146,7 +146,10 @@ class ExpensesController {
         );
       }
 
-      const newExpense = await Expense.create(req.body);
+      const newExpense = await Expense.create({
+        ...req.body,
+        part_id: order?.part_id,
+      });
       return response.created(res, "Xarajat qo'shildi", newExpense);
     } catch (error) {
       return response.error(res, error.message, error);

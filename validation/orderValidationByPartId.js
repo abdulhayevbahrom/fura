@@ -7,7 +7,7 @@ const ajv = new Ajv({ allErrors: true });
 addErrors(ajv);
 addFormats(ajv);
 
-const orderValidation = (req, res, next) => {
+const orderValidationByPartId = (req, res, next) => {
   const schema = {
     type: "object",
     properties: {
@@ -15,24 +15,6 @@ const orderValidation = (req, res, next) => {
         type: "string",
         pattern: "^[0-9a-fA-F]{24}$",
         errorMessage: "Partiya id 24 ta belgi bo'lishi kerak",
-      },
-      part_name: {
-        type: "string",
-      },
-      driver: {
-        type: "string",
-        pattern: "^[0-9a-fA-F]{24}$",
-        errorMessage: "Haydovchi id 24 ta belgi bo'lishi kerak",
-      },
-      car: {
-        type: "string",
-        pattern: "^[0-9a-fA-F]{24}$",
-        errorMessage: "Mashina id 24 ta belgi bo'lishi kerak",
-      },
-      trailer: {
-        type: "string",
-        pattern: "^[0-9a-fA-F]{24}$",
-        errorMessage: "Pritsep id 24 ta belgi bo'lishi kerak",
       },
       partner: {
         type: "string",
@@ -69,25 +51,12 @@ const orderValidation = (req, res, next) => {
       },
     },
 
-    required: [
-      "driver",
-      "car",
-      "trailer",
-      "partner",
-      "title",
-      "weight",
-      "from",
-      "to",
-      "totalPrice",
-    ],
+    required: ["partner", "title", "weight", "from", "to"],
 
     additionalProperties: false,
 
     errorMessage: {
       required: {
-        driver: "Haydovchi id kiritish shart",
-        car: "Mashina id kiritish shart",
-        trailer: "Pritsep id kiritish shart",
         title: "Nom kiritish shart",
         weight: "Og'irlik kiritish shart",
         from: "Qayerdanligini kiritish shart",
@@ -111,4 +80,4 @@ const orderValidation = (req, res, next) => {
   next();
 };
 
-module.exports = orderValidation;
+module.exports = orderValidationByPartId;

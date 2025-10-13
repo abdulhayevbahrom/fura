@@ -7,6 +7,7 @@ const orderSchema = new Schema(
     car: { type: Schema.Types.ObjectId, ref: "cars" },
     trailer: { type: Schema.Types.ObjectId, ref: "trailers" },
     partner: { type: Schema.Types.ObjectId, ref: "partners" },
+    driver_salary: { type: Number, default: 0 },
     status: { type: Boolean, default: true },
     state: {
       type: String,

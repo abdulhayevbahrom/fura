@@ -98,9 +98,29 @@ class OrderController {
         part_id = newPart[0]._id;
       }
 
+      let part = await Parts.findById(part_id);
+      if (!part) {
+        await session.abortTransaction();
+        session.endSession();
+        return responses.error(res, "Partiya topilmadi");
+      }
+      if (part.status === "finished") {
+        await session.abortTransaction();
+        session.endSession();
+        return responses.warning(res, "Partiya yopilgan");
+      }
+
       // Buyurtma yaratish
       const newOrder = await Orders.create(
         [{ ...rest, part_id, state: "accepted" }],
+        { session }
+      );
+
+      await Cars.findByIdAndUpdate(
+        newOrder[0].car,
+        {
+          status: false,
+        },
         { session }
       );
 
@@ -119,6 +139,52 @@ class OrderController {
       await session.abortTransaction();
       session.endSession();
       return responses.serverError(res, err.message, err);
+    }
+  }
+
+  // create order by part_id
+  async createOrderByPartId(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      let { part_id } = req.body;
+
+      let part = await Parts.findById(part_id, { session });
+      if (!part) return responses.error(res, "Partiya topilmadi");
+      if (part.status === "finished")
+        return responses.warning(res, "Partiya yopilgan");
+
+      let order = await Orders.findOne(
+        {
+          part_id,
+          deleted: false,
+        },
+        { session }
+      );
+
+      let newData = {
+        ...req.body,
+        part_id,
+        driver: order.driver,
+        car: order.car,
+        trailer: order.trailer,
+      };
+
+      const newOrder = await Orders.create([newData], { session });
+
+      if (!newOrder || !newOrder[0]) {
+        await session.abortTransaction();
+        session.endSession();
+        return responses.error(res, "Buyurtma qo‘shilmadi");
+      }
+
+      // Hammasi muvaffaqiyatli bo‘ldi
+      await session.commitTransaction();
+      session.endSession();
+
+      return responses.created(res, "Buyurtma qo'shildi", newOrder[0]);
+    } catch (err) {
+      responses.serverError(res, err.message, err);
     }
   }
 
