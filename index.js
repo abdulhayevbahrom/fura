@@ -1,4 +1,5 @@
 require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const connectDB = require("./config/dbConfig"); // yoki ./utils/connect
 const cors = require("cors");
@@ -40,7 +41,8 @@ mongoose.plugin(applyTimezone);
 app.set("socket", io);
 soket.connect(io);
 
-app.use("/uploads", express.static("uploads"));
+const trainingPath = path.join(__dirname, "./uploads");
+app.use("/cars-image", express.static(trainingPath));
 app.use("/api", authMiddleware, router); // Routerlarni ulash
 app.get("/", (req, res) => res.send("Salom dunyo")); // Bosh sahifa
 app.use(notfound); // 404 middleware

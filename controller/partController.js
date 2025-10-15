@@ -2,6 +2,9 @@ const response = require("../utils/response");
 const Parts = require("../model/partModel");
 const Orders = require("../model/orderModel");
 const Cars = require("../model/carModel");
+const Drivers = require("../model/driversModel");
+const Salary = require("../model/salaryModel");
+const Trailers = require("../model/trailerModel");
 
 class partController {
   async getParts(req, res) {
@@ -113,35 +116,83 @@ class partController {
 
   // 🔹 Partiya statusini o‘zgartirish
   async changeStatus(req, res) {
+    const session = await Parts.startSession();
+    session.startTransaction();
+
     try {
-      const { id } = req.params;
+      const { part_id } = req.params;
       const { status } = req.body;
 
       if (status && !["active", "in_progress", "finished"].includes(status)) {
+        await session.abortTransaction();
+        session.endSession();
         return response.error(
           res,
-          "Noto'g'ri status qiymati yubrildi, tog'ri qiymat: finished"
+          "Noto'g'ri status qiymati yuborildi, to'g'ri qiymatlar: active, in_progress, finished"
         );
       }
 
-      const part = await Parts.findById(id);
-      if (!part) return response.notFound(res, "Partiya topilmadi");
+      const part = await Parts.findById(part_id).session(session);
+      if (!part) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.notFound(res, "Partiya topilmadi");
+      }
 
       // Agar status kiritilmagan bo‘lsa, mavjudini saqlaydi
       part.status = status ?? part.status;
 
-      await part.save();
+      await part.save({ session });
 
-      let order = await Orders.findOne({ part_id: id, deleted: false });
+      const order = await Orders.findOne({
+        part_id: part_id,
+        deleted: false,
+      }).session(session);
+      if (!order) {
+        await session.abortTransaction();
+        session.endSession();
+        return response.notFound(res, "Partiyaga tegishli zakaz topilmadi");
+      }
 
+      // Mashina statusini yangilash
       await Cars.findOneAndUpdate(
         { _id: order.car },
         { status: true },
-        { new: true }
+        { new: true, session }
       );
+
+      // Trailer statusini yangilash
+      await Trailers.findOneAndUpdate(
+        { _id: order.trailer },
+        { status: true },
+        { new: true, session }
+      );
+
+      // Haydovchi statusini yangilash
+      await Drivers.findOneAndUpdate(
+        { _id: order.driver },
+        { is_active: true },
+        { new: true, session }
+      );
+
+      // Partiyaga tegishli orderlarni olish
+      const orders = await Orders.find({
+        part_id: part_id,
+        deleted: false,
+        state: "finished",
+      });
+
+      if (!orders.length) {
+        return response.error(res, "Partiyada tugallangan orderlar topilmadi");
+      }
+
+      await session.commitTransaction();
+      session.endSession();
 
       return response.success(res, "Partiya statusi o'zgartirildi", part);
     } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
       return response.serverError(res, err.message, err);
     }
   }

@@ -6,9 +6,32 @@ const mongoose = require("mongoose");
 class carsController {
   async getAllCars(req, res) {
     try {
-      const cars = await Cars.find({});
-      if (!cars.length)
+      const cars = await Cars.aggregate([
+        {
+          $project: {
+            title: 1,
+            number: 1,
+            year: 1,
+            fuelFor100km: 1,
+            probeg: 1,
+            licens: 1,
+            sugurta: 1,
+            status: 1,
+            image: {
+              $cond: {
+                if: { $ifNull: ["$image", false] },
+                then: { $concat: ["/cars-image/", "$image"] },
+                else: null,
+              },
+            },
+          },
+        },
+      ]);
+
+      if (!cars.length) {
         return response.notFound(res, "Mashinalar topilmadi", []);
+      }
+
       return response.success(res, "Mashinalar topildi", cars);
     } catch (error) {
       return response.serverError(res, "Server Error", error);
@@ -17,9 +40,36 @@ class carsController {
 
   async getCarById(req, res) {
     try {
-      const car = await Cars.findById(req.params.id);
-      if (!car) return response.notFound(res, "Mashina topilmadi");
-      return response.success(res, "Mashina topildi", car);
+      const car = await Cars.aggregate([
+        {
+          $match: { _id: new mongoose.Types.ObjectId(req.params.id) }, // "new" qo'shildi
+        },
+        {
+          $project: {
+            title: 1,
+            number: 1,
+            year: 1,
+            fuelFor100km: 1,
+            probeg: 1,
+            licens: 1,
+            sugurta: 1,
+            status: 1,
+            image: {
+              $cond: {
+                if: { $ifNull: ["$image", false] },
+                then: { $concat: ["/cars-image/", "$image"] },
+                else: null,
+              },
+            },
+          },
+        },
+      ]);
+
+      if (!car.length) {
+        return response.notFound(res, "Mashina topilmadi");
+      }
+
+      return response.success(res, "Mashina topildi", car[0]);
     } catch (error) {
       return response.serverError(res, error.message, error);
     }
@@ -31,7 +81,7 @@ class carsController {
       // check number
       let car = await Cars.findOne({ number: req.body.number });
       if (car) return response.error(res, "Mashina raqami mavjud");
-      const newCar = await Cars.create(req.body);
+      const newCar = await Cars.create({ ...req.body, image: req.body.image });
       return response.created(res, "Mashina qo'shildi", newCar);
     } catch (error) {
       return response.serverError(res, error.message, error);

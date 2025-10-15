@@ -67,6 +67,10 @@ const orderValidation = (req, res, next) => {
         type: "number",
         errorMessage: "Umumiy narx raqam bo'lishi kerak",
       },
+      state: {
+        type: "string",
+        enum: ["pending", "accepted", "rejected", "finished"],
+      },
     },
 
     required: [

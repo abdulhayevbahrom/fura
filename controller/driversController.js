@@ -24,7 +24,9 @@ class DriversController {
       ]);
 
       const result = roles.map((r) => r._id);
-      result.unshift("driver");
+      if (!result?.find((r) => r === "driver")) {
+        result.unshift("driver");
+      }
       return response.success(res, "Rollar ro'yxati", result);
     } catch (error) {
       return response.serverError(res, error.message, error);
@@ -47,26 +49,32 @@ class DriversController {
 
   async createDriver(req, res) {
     try {
-      const driver = await Drivers.findOne({ login: req.body.login });
-      if (driver) return response.error(res, "Bu login allaqachon mavjud");
+      if (req.body.login) {
+        const driver = await Drivers.findOne({ login: req.body.login });
+        if (driver) return response.error(res, "Bu login allaqachon mavjud");
+      }
 
-      const hashedPassword = await bcrypt.hash(req.body.password, 10);
-      req.body.password = hashedPassword;
+      if (req.body.password) {
+        const hashedPassword = await bcrypt.hash(req.body.password, 10);
+        req.body.password = hashedPassword;
+      }
 
       const newDriver = await Drivers.create(req.body);
       return response.success(res, "Haydovchi qo'shildi", newDriver);
     } catch (err) {
-      return response.error(res, err);
+      return response.serverError(res, err.message, err);
     }
   }
 
   async updateDriver(req, res) {
     try {
-      const driver = await Drivers.findOne({
-        login: req.body.login,
-        _id: { $ne: req.params.id },
-      });
-      if (driver) return response.error(res, "Bu login allaqachon mavjud");
+      if (req.body.login) {
+        const driver = await Drivers.findOne({
+          login: req.body.login,
+          _id: { $ne: req.params.id },
+        });
+        if (driver) return response.error(res, "Bu login allaqachon mavjud");
+      }
 
       if (req.body.password) {
         const hashedPassword = await bcrypt.hash(req.body.password, 10);

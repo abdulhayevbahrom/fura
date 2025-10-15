@@ -1,5 +1,12 @@
 const router = require("express").Router();
 
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() });
+const v1 = upload.single("file");
+// const v2 = upload.fields([{ name: "images" }, { name: "documents" }]);
+
+const parser = require("../middleware/image.parser");
+
 // Controllers and Validations
 const adminController = require("../controller/adminController");
 const adminValidation = require("../validation/adminValidation");
@@ -18,7 +25,13 @@ const carsValidation = require("../validation/carsValidation");
 // CARS - Asosiy CRUD operatsiyalar
 router.get("/cars/all", carsController.getAllCars);
 router.get("/cars/:id", carsController.getCarById);
-router.post("/cars/create", carsValidation, carsController.createCar);
+router.post(
+  "/cars/create",
+  v1,
+  parser,
+  carsValidation,
+  carsController.createCar
+);
 router.put("/cars/update/:id", carsValidation, carsController.updateCar);
 router.delete("/cars/delete/:id", carsController.deleteCar);
 
@@ -89,7 +102,7 @@ const partController = require("../controller/partController");
 
 router.get("/parts/all", partController.getParts);
 router.get("/parts/:id", partController.getPartById);
-router.put("/parts/status/:id", partController.changeStatus);
+router.put("/parts/status/:part_id", partController.changeStatus);
 
 // EXPENSES
 const expensesController = require("../controller/expensesController");
@@ -123,23 +136,14 @@ router.put("/partners/update/:id", partnerController.updatePartner);
 
 // SALARY
 const salaryController = require("../controller/salaryController");
-const salaryValidation = require("../validation/salaryValidation");
 
-router.get("/salaries/all", salaryController.getAllSalaries);
-router.get("/salaries/driver/:id", salaryController.getSalaryByDriverId);
-router.post(
-  "/salaries/create",
-  salaryValidation,
-  salaryController.createSalary
-);
-router.put(
-  "/salaries/update/:id",
-  salaryValidation,
-  salaryController.updateSalary
-);
-router.delete("/salaries/delete/:id", salaryController.deleteSalary);
+router.post("/salary/pay", salaryController.payToDriver);
+router.get("/salary/drivers", salaryController.getDrivers);
+router.get("/salary/payments", salaryController.getAllPaymetns);
+router.get("/salary/:driver", salaryController.getByDriverId);
 
 // DASHBOARD
 const dashboardController = require("../controller/dashboardController");
 router.get("/dashboard", dashboardController.getDashboardData);
+
 module.exports = router;

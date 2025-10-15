@@ -8,8 +8,8 @@ const driversSchema = new Schema(
     address: { type: String, required: true },
     balance: { type: Number, default: 0 },
     status: { type: Boolean, default: true },
-    login: { type: String, required: true },
-    password: { type: String, required: true },
+    login: { type: String },
+    password: { type: String },
     is_active: {
       type: Boolean,
       default: true,
@@ -23,6 +23,7 @@ const driversSchema = new Schema(
       default: "driver",
       required: true,
     },
+    salary: { type: Number, default: 0 },
   },
   {
     timestamps: true,

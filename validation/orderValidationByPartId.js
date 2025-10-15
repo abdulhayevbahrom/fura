@@ -49,6 +49,11 @@ const orderValidationByPartId = (req, res, next) => {
         type: "number",
         errorMessage: "Umumiy narx raqam bo'lishi kerak",
       },
+      state: {
+        type: "string",
+        default: "pending",
+        enum: ["pending", "accepted", "rejected", "finished"],
+      },
     },
 
     required: ["partner", "title", "weight", "from", "to"],

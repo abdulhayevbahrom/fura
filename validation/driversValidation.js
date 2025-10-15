@@ -23,16 +23,9 @@ const driversValidation = (req, res, next) => {
         type: "string",
         default: "driver",
       },
+      salary: { type: "number", default: 0 },
     },
-    required: [
-      "firstName",
-      "lastName",
-      "phone",
-      "address",
-      "login",
-      "password",
-      "role",
-    ],
+    required: ["firstName", "lastName", "phone", "address", "role"],
     additionalProperties: false,
     errorMessage: {
       required: {
@@ -40,8 +33,6 @@ const driversValidation = (req, res, next) => {
         lastName: "Familiya kiritish shart",
         phone: "Telefon raqami kiritish shart",
         address: "Manzil kiritish shart",
-        login: "Login kiritish shart",
-        password: "Parol kiritish shart",
         role: "Role kiritish shart",
       },
       properties: {
@@ -52,10 +43,6 @@ const driversValidation = (req, res, next) => {
         phone: "Telefon raqami 9 belgidan iborat bo'lishi kerak",
         address:
           "Manzil 2-50 ta belgi oralig'ida bo'lishi kerak string turida bolsin",
-        login:
-          "Login 4-20 ta belgi oralig'ida bo'lishi kerak va faqat raqamlardan iborat bo'lishi kerak",
-        password:
-          "Parol 6-50 ta belgi oralig'ida bo'lishi kerak va faqat raqamlardan iborat bo'lishi kerak",
         role: "Role string turida bolsin",
       },
       additionalProperties: "Ruxsat etilmagan maydon kiritildi",

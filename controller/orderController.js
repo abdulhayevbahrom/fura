@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const Drivers = require("../model/driversModel");
 const Cars = require("../model/carModel");
 const Parts = require("../model/partModel");
+const Trailers = require("../model/trailerModel");
 
 class OrderController {
   async getOrders(req, res) {
@@ -70,22 +71,23 @@ class OrderController {
     session.startTransaction();
 
     try {
-      let { part_id, part_name, ...rest } = req.body;
+      let { part_name, ...rest } = req.body;
+      let part_id = req.body.part_id;
 
-      // Agar part_id kelsa — mavjud partiyani ishlatamiz
+      // Agar part_id kiritilmagan bo'lsa, part_name orqali yangi partiya yaratamiz
       if (!part_id && part_name) {
         const existingPart = await Parts.findOne({
           name: part_name.trim(),
         }).session(session);
 
         if (existingPart) {
-          // Agar partiya nomi mavjud bo‘lsa — xatolik bilan chiqamiz
+          // Agar partiya nomi mavjud bo'lsa, xatolik qaytariladi
           await session.abortTransaction();
           session.endSession();
           return responses.warning(res, "Bunday partiya nomi mavjud");
         }
 
-        // Yangi partiya yaratamiz
+        // Yangi partiya yaratish
         const newPart = await Parts.create([{ name: part_name.trim() }], {
           session,
         });
@@ -98,12 +100,14 @@ class OrderController {
         part_id = newPart[0]._id;
       }
 
-      let part = await Parts.findById(part_id);
+      // Mavjud partiyani olish
+      const part = await Parts.findById(part_id).session(session);
       if (!part) {
         await session.abortTransaction();
         session.endSession();
         return responses.error(res, "Partiya topilmadi");
       }
+
       if (part.status === "finished") {
         await session.abortTransaction();
         session.endSession();
@@ -116,26 +120,46 @@ class OrderController {
         { session }
       );
 
-      await Cars.findByIdAndUpdate(
-        newOrder[0].car,
-        {
-          status: false,
-        },
-        { session }
-      );
-
       if (!newOrder || !newOrder[0]) {
         await session.abortTransaction();
         session.endSession();
         return responses.error(res, "Buyurtma qo‘shilmadi");
       }
 
-      // Hammasi muvaffaqiyatli bo‘ldi
+      // Mashina holatini yangilash
+      if (newOrder[0].car) {
+        await Cars.findByIdAndUpdate(
+          newOrder[0].car,
+          { status: false },
+          { session }
+        );
+      }
+
+      // Haydovchi holatini yangilash
+      if (newOrder[0].driver) {
+        await Drivers.findByIdAndUpdate(
+          newOrder[0].driver,
+          { is_active: false },
+          { session }
+        );
+      }
+
+      // Tirkama holatini yangilash
+      if (newOrder[0].trailer) {
+        await Trailers.findByIdAndUpdate(
+          newOrder[0].trailer,
+          { status: false },
+          { session }
+        );
+      }
+
+      // Hammasi muvaffaqiyatli bo'lsa, tranzaksiyani tasdiqlash
       await session.commitTransaction();
       session.endSession();
 
       return responses.created(res, "Buyurtma qo'shildi", newOrder[0]);
     } catch (err) {
+      // Xatolik yuz bersa, tranzaksiyani bekor qilish
       await session.abortTransaction();
       session.endSession();
       return responses.serverError(res, err.message, err);
@@ -149,18 +173,16 @@ class OrderController {
     try {
       let { part_id } = req.body;
 
-      let part = await Parts.findById(part_id, { session });
+      let part = await Parts.findById(part_id).session(session);
       if (!part) return responses.error(res, "Partiya topilmadi");
       if (part.status === "finished")
         return responses.warning(res, "Partiya yopilgan");
 
-      let order = await Orders.findOne(
-        {
-          part_id,
-          deleted: false,
-        },
-        { session }
-      );
+      let order = await Orders.findOne({
+        part_id,
+        deleted: false,
+      }).session(session);
+      if (!order) return responses.error(res, "Buyurtma topilmadi");
 
       let newData = {
         ...req.body,

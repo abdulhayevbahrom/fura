@@ -22,6 +22,7 @@ const cpuSchema = new Schema(
 
 const carsSchema = new Schema(
   {
+    image: { type: String },
     title: { type: String, required: true },
     number: { type: String, required: true },
     year: { type: Number, required: true },

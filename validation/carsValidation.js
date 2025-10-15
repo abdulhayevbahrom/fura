@@ -5,9 +5,21 @@ require("ajv-formats")(ajv);
 const response = require("../utils/response");
 
 const carsValidation = (req, res, next) => {
+  // 1. req.body ni JSON obyektiga aylantirish
+  if (typeof req.body === "object" && req.body !== null) {
+    Object.keys(req.body).forEach((key) => {
+      try {
+        req.body[key] = JSON.parse(req.body[key]);
+      } catch (err) {
+        // Agar JSON emas bo'lsa, string sifatida qoldiriladi
+      }
+    });
+  }
+
   const schema = {
     type: "object",
     properties: {
+      file: { type: "string" },
       title: { type: "string", minLength: 1 },
       number: { type: "string", minLength: 1 },
       year: { type: "number", minimum: 1900, maximum: 2100 },
@@ -101,6 +113,7 @@ const carsValidation = (req, res, next) => {
             model: { type: "string", minLength: 1 },
             year: { type: "number", minimum: 1900, maximum: 2100 },
             number: { type: "string", minLength: 1 },
+            price: { type: "number", minimum: 0 },
           },
           required: ["marka", "model", "year", "number"],
           additionalProperties: false,
@@ -119,7 +132,7 @@ const carsValidation = (req, res, next) => {
       "licens",
       "sugurta",
     ],
-    additionalProperties: false,
+    additionalProperties: true,
     errorMessage: {
       required: {
         title: "Nomi kiritish shart",
@@ -154,6 +167,7 @@ const carsValidation = (req, res, next) => {
       const field = err.instancePath.replace("/", "") || "Umumiy";
       return `${field}: ${err.message}`;
     });
+
     return response.error(res, errors.join(", "));
   }
 
