@@ -49,53 +49,96 @@ class SalaryController {
   //     let month = req.query.month
   //       ? req.query.month
   //       : moment().format("YYYY-MM");
+
+  //     // Haydovchilar va boshqa ishchilarni olish
   //     const drivers = await Driver.find(
   //       { is_deleted: false },
   //       {
   //         password: 0,
   //         is_active: 0,
   //         is_deleted: 0,
-  //         role: 0,
   //         __v: 0,
-  //         role: 0,
   //         status: 0,
   //         balance: 0,
   //         login: 0,
   //       }
   //     );
 
-  //     if (!drivers.length)
-  //       return response.notFound(res, "Haydovchilar topilmadi", []);
+  //     if (!drivers.length) {
+  //       return response.notFound(res, "Foydalanuvchilar topilmadi", []);
+  //     }
 
   //     let data = [];
+  //     const startOfMonth = moment(month, "YYYY-MM").startOf("month").toDate();
+  //     const endOfMonth = moment(month, "YYYY-MM").endOf("month").toDate();
+
+  //     // Faqat haydovchilar uchun partiyalarni olish
+  //     const parts = await Parts.find({
+  //       createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+  //     });
 
   //     for (let driver of drivers) {
+  //       // To'lovlarni olish (barcha foydalanuvchilar uchun)
   //       const driver_payments = await Salary.find({
   //         driver: driver._id,
   //         month,
   //       });
-  //       let total = driver_payments.reduce((acc, payment) => {
-  //         return acc + payment.amount;
+  //       const totalPayments = driver_payments.reduce((acc, payment) => {
+  //         return acc + (payment.amount || 0);
   //       }, 0);
 
-  //       // for drivers
-  //       let parts = await Parts.find({ createdAt: { $gte: new Date(month) } });
-  //       let total_part_id = parts.map((part) => part._id);
-
-  //       let orders = await Order.find({
-  //         driver: driver._id,
-  //         part_id: { $in: total_part_id },
-  //         state: { $ne: "finished" },
-  //       });
-
-  //       data.push({
+  //       let result = {
   //         ...driver._doc,
-  //         totalPayments: total,
-  //         debt: driver.salary - total,
-  //       });
+  //         totalPayments,
+  //         totalDebt: driver.salary - totalPayments, // Umumiy qarz (barcha uchun)
+  //         partDebts: [], // Faqat haydovchilar uchun
+  //       };
+
+  //       // Agar foydalanuvchi haydovchi bo'lsa
+  //       if (driver.role === "driver") {
+  //         for (let part of parts) {
+  //           // Yakunlangan partiyaga tegishli buyurtmalarni olish
+  //           const orders = await Order.find({
+  //             driver: driver._id,
+  //             part_id: part._id,
+  //             createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+  //             state: "finished", // Faqat yakunlangan buyurtmalar
+  //           });
+
+  //           // Buyurtmalardagi driver_salary summasini hisoblash
+  //           const totalDriverSalary = orders.reduce((acc, order) => {
+  //             return acc + (order.driver_salary || 0);
+  //           }, 0);
+
+  //           // Ushbu partiya bo'yicha to'langan summalarni olish
+  //           const partPayments = await Salary.find({
+  //             driver: driver._id,
+  //             part_id: part._id,
+  //           });
+
+  //           const totalPaidAmount = partPayments.reduce((acc, payment) => {
+  //             return acc + (payment.amount || 0);
+  //           }, 0);
+
+  //           // Qarzni hisoblash
+  //           const debt = totalDriverSalary - totalPaidAmount;
+
+  //           if (totalDriverSalary > 0 || totalPaidAmount > 0) {
+  //             result.partDebts.push({
+  //               part_id: part._id,
+  //               part_name: part.name || part._id,
+  //               totalDriverSalary, // Partiyadagi buyurtmalar summasi
+  //               totalPaidAmount, // To'langan summa
+  //               debt: debt > 0 ? debt : 0, // Qarz (faqat musbat bo'lsa)
+  //             });
+  //           }
+  //         }
+  //       }
+
+  //       data.push(result);
   //     }
 
-  //     return response.success(res, "Haydovchilar topildi", data);
+  //     return response.success(res, "Foydalanuvchilar topildi", data);
   //   } catch (err) {
   //     return response.error(res, err.message, err);
   //   }
@@ -106,7 +149,10 @@ class SalaryController {
         ? req.query.month
         : moment().format("YYYY-MM");
 
-      // Haydovchilar va boshqa ishchilarni olish
+      const startOfMonth = moment(month, "YYYY-MM").startOf("month").toDate();
+      const endOfMonth = moment(month, "YYYY-MM").endOf("month").toDate();
+
+      // Barcha ishchilarni olish
       const drivers = await Driver.find(
         { is_deleted: false },
         {
@@ -124,71 +170,78 @@ class SalaryController {
         return response.notFound(res, "Foydalanuvchilar topilmadi", []);
       }
 
-      let data = [];
-      const startOfMonth = moment(month, "YYYY-MM").startOf("month").toDate();
-      const endOfMonth = moment(month, "YYYY-MM").endOf("month").toDate();
-
-      // Faqat haydovchilar uchun partiyalarni olish
       const parts = await Parts.find({
         createdAt: { $gte: startOfMonth, $lte: endOfMonth },
       });
 
+      let data = [];
+
       for (let driver of drivers) {
-        // To'lovlarni olish (barcha foydalanuvchilar uchun)
+        // To‘lovlarni olish
         const driver_payments = await Salary.find({
           driver: driver._id,
           month,
         });
-        const totalPayments = driver_payments.reduce((acc, payment) => {
-          return acc + (payment.amount || 0);
-        }, 0);
+
+        const totalPaymentsFromDB = driver_payments.reduce(
+          (acc, payment) => acc + (payment.amount || 0),
+          0
+        );
 
         let result = {
           ...driver._doc,
-          totalPayments,
-          totalDebt: driver.salary - totalPayments, // Umumiy qarz (barcha uchun)
-          partDebts: [], // Faqat haydovchilar uchun
+          totalPayments: totalPaymentsFromDB,
+          totalDebt: driver.salary - totalPaymentsFromDB,
+          partDebts: [],
         };
 
-        // Agar foydalanuvchi haydovchi bo'lsa
+        // faqat haydovchilar uchun partiyalarni hisoblash
         if (driver.role === "driver") {
           for (let part of parts) {
-            // Yakunlangan partiyaga tegishli buyurtmalarni olish
             const orders = await Order.find({
               driver: driver._id,
               part_id: part._id,
-              createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-              state: "finished", // Faqat yakunlangan buyurtmalar
+              // createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+              // state: "finished",
             });
 
-            // Buyurtmalardagi driver_salary summasini hisoblash
-            const totalDriverSalary = orders.reduce((acc, order) => {
-              return acc + (order.driver_salary || 0);
-            }, 0);
+            const totalDriverSalary = orders.reduce(
+              (acc, order) => acc + (order.driver_salary || 0),
+              0
+            );
 
-            // Ushbu partiya bo'yicha to'langan summalarni olish
             const partPayments = await Salary.find({
               driver: driver._id,
               part_id: part._id,
             });
 
-            const totalPaidAmount = partPayments.reduce((acc, payment) => {
-              return acc + (payment.amount || 0);
-            }, 0);
+            const totalPaidAmount = partPayments.reduce(
+              (acc, payment) => acc + (payment.amount || 0),
+              0
+            );
 
-            // Qarzni hisoblash
             const debt = totalDriverSalary - totalPaidAmount;
 
             if (totalDriverSalary > 0 || totalPaidAmount > 0) {
               result.partDebts.push({
                 part_id: part._id,
                 part_name: part.name || part._id,
-                totalDriverSalary, // Partiyadagi buyurtmalar summasi
-                totalPaidAmount, // To'langan summa
-                debt: debt > 0 ? debt : 0, // Qarz (faqat musbat bo'lsa)
+                totalDriverSalary,
+                totalPaidAmount,
+                debt: debt > 0 ? debt : 0,
               });
             }
           }
+
+          // 🔹 faqat role === "driver" bo'lganlarda umumiy yig‘indilarni yangilaymiz
+          result.totalPayments = result.partDebts.reduce(
+            (acc, p) => acc + (p.totalPaidAmount || 0),
+            0
+          );
+          result.totalDebt = result.partDebts.reduce(
+            (acc, p) => acc + (p.debt || 0),
+            0
+          );
         }
 
         data.push(result);

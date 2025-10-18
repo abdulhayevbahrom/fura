@@ -23,6 +23,7 @@ const carsController = require("../controller/carsController");
 const carsValidation = require("../validation/carsValidation");
 
 // CARS - Asosiy CRUD operatsiyalar
+router.get("/cars/static", carsController.getStatictics);
 router.get("/cars/all", carsController.getAllCars);
 router.get("/cars/:id", carsController.getCarById);
 router.post(
@@ -84,9 +85,12 @@ const orderController = require("../controller/orderController");
 const orderValidation = require("../validation/orderValidation");
 const orderValidationByPartId = require("../validation/orderValidationByPartId");
 
+router.get("/orders/pending", orderController.getPendingOrders);
+router.get("/orders/driver/:driver_id", orderController.getOrdersByDriverId);
+router.get("/orders/car-order/:id", orderController.getOrdersByCarId);
 router.get("/orders/all", orderController.getOrders);
 router.get("/orders/:id", orderController.getOrderById);
-router.get("/orders/driver/:driver_id", orderController.getOrdersByDriverId);
+
 router.post("/orders/create", orderValidation, orderController.createOrder);
 router.post(
   "/orders/create-by-part",

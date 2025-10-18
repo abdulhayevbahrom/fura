@@ -49,9 +49,14 @@ class ExpensesController {
       const expense = await Expense.findOne({
         _id: req.params.id,
         deleted: false, // faqat delete qilinmaganlarni oladi
-      }).populate({
-        path: "order_id",
-      });
+      })
+        .populate({
+          path: "order_id",
+        })
+        .populate("car", "title number")
+        .populate("trailer", "number")
+        .populate("order_id")
+        .populate("part_id");
 
       if (!expense) {
         return response.notFound(res, "Xarajat topilmadi");
@@ -91,7 +96,11 @@ class ExpensesController {
       const expenses = await Expense.find({
         order_id: orderId,
         deleted: false,
-      });
+      })
+        .populate("car", "title number")
+        .populate("trailer", "number")
+        .populate("order_id")
+        .populate("part_id");
       if (!expenses.length) {
         return response.notFound(res, "Xarajatlar topilmadi", []);
       }

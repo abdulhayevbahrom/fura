@@ -2,6 +2,7 @@ const Cars = require("../model/carModel");
 const response = require("../utils/response");
 const Expenses = require("../model/expensesModel");
 const mongoose = require("mongoose");
+const Orders = require("../model/orderModel");
 
 class carsController {
   async getAllCars(req, res) {
@@ -17,6 +18,8 @@ class carsController {
             licens: 1,
             sugurta: 1,
             status: 1,
+            vehicles: 1,
+            cpu: 1,
             image: {
               $cond: {
                 if: { $ifNull: ["$image", false] },
@@ -606,6 +609,222 @@ class carsController {
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
+      return response.serverError(res, error.message, error);
+    }
+  }
+
+  // async getStatictics(req, res) {
+  //   try {
+  //     let { startDate, endDate } = req.query;
+  //     let filter = {};
+  //     if (startDate && endDate) {
+  //       filter.createdAt = {
+  //         $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
+  //         $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+  //       };
+  //     }
+
+  //     let carsData = await Cars.find(filter).select("-vehicles").select("-cpu");
+
+  //     let data = [];
+
+  //     for (const car of carsData) {
+  //       let orders = await Orders.find({
+  //         car: car._id,
+  //         deleted: false,
+  //       });
+
+  //       let totalPrice = orders.reduce((total, order) => {
+  //         return total + order.totalPrice;
+  //       }, 0);
+
+  //       let driverSalary = orders.reduce((total, order) => {
+  //         return total + order.driver_salary;
+  //       }, 0);
+
+  //       let expenses = await Expenses.find({
+  //         car: car._id,
+  //         type: "repair",
+  //         deleted: false,
+  //       });
+
+  //       let totalRepairPrice = expenses.reduce((total, expense) => {
+  //         return total + expense.amount;
+  //       }, 0);
+
+  //       let orderIds = orders.map((order) => order._id);
+  //       let orderExpenses = await Expenses.find({
+  //         order_id: { $in: orderIds },
+  //         type: "order_expense",
+  //         deleted: false,
+  //       });
+
+  //       let totalOrderExpense = orderExpenses.reduce((total, expense) => {
+  //         return total + expense.amount;
+  //       }, 0);
+
+  //       data.push({
+  //         car: car,
+  //         totalOrders: orders.length,
+  //         totalPrice: totalPrice,
+  //         totalExpenses: totalRepairPrice + totalOrderExpense + driverSalary,
+  //         totalRepairPrice: totalRepairPrice,
+  //         driverSalary: driverSalary,
+  //         profit: totalPrice - totalRepairPrice - driverSalary,
+  //       });
+  //     }
+
+  //     if (!data.length)
+  //       return response.notFound(res, "Ma'lumotlar topilmadi", []);
+
+  //     return response.success(res, "Ma'lumotlar", data);
+  //   } catch (error) {
+  //     return response.serverError(res, error.message, error);
+  //   }
+  // }
+
+  async getStatictics(req, res) {
+    try {
+      let { startDate, endDate } = req.query;
+      let matchStage = { deleted: { $ne: true } };
+
+      if (startDate && endDate) {
+        matchStage.createdAt = {
+          $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+        };
+      }
+
+      const data = await Cars.aggregate([
+        {
+          $match: matchStage,
+        },
+        {
+          $lookup: {
+            from: "orders",
+            localField: "_id",
+            foreignField: "car",
+            as: "orders",
+            pipeline: [
+              { $match: { deleted: false } },
+              {
+                $lookup: {
+                  from: "expenses",
+                  localField: "_id",
+                  foreignField: "order_id",
+                  as: "order_expenses",
+                  pipeline: [
+                    { $match: { type: "order_expense", deleted: false } },
+                    { $project: { amount: 1 } },
+                  ],
+                },
+              },
+              {
+                $project: {
+                  totalPrice: 1,
+                  driver_salary: 1,
+                  order_expenses: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: "expenses",
+            localField: "_id",
+            foreignField: "car",
+            as: "repairs",
+            pipeline: [
+              { $match: { type: "repair", deleted: false } },
+              { $project: { amount: 1 } },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            totalOrders: { $size: "$orders" },
+            totalPrice: { $sum: "$orders.totalPrice" },
+            driverSalary: { $sum: "$orders.driver_salary" },
+            totalRepairPrice: { $sum: "$repairs.amount" },
+            totalOrderExpense: {
+              $sum: {
+                $map: {
+                  input: "$orders.order_expenses",
+                  as: "expList",
+                  in: { $sum: "$$expList.amount" },
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            totalExpenses: {
+              $add: [
+                "$totalRepairPrice",
+                "$totalOrderExpense",
+                "$driverSalary",
+              ],
+            },
+            profit: {
+              $subtract: [
+                "$totalPrice",
+                { $add: ["$totalRepairPrice", "$driverSalary"] },
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            vehicles: 0,
+            cpu: 0,
+            orders: 0,
+            repairs: 0,
+            totalOrderExpense: 0,
+          },
+        },
+        {
+          $addFields: {
+            car: {
+              _id: "$_id",
+              title: "$title",
+              number: "$number",
+              year: "$year",
+              fuelFor100km: "$fuelFor100km",
+              probeg: "$probeg",
+              licens: "$licens",
+              sugurta: "$sugurta",
+              status: "$status",
+              createdAt: "$createdAt",
+              updatedAt: "$updatedAt",
+              __v: "$__v",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            title: 0,
+            number: 0,
+            year: 0,
+            fuelFor100km: 0,
+            probeg: 0,
+            licens: 0,
+            sugurta: 0,
+            status: 0,
+            createdAt: 0,
+            updatedAt: 0,
+            __v: 0,
+          },
+        },
+      ]);
+
+      if (!data.length)
+        return response.notFound(res, "Ma'lumotlar topilmadi", []);
+
+      return response.success(res, "Ma'lumotlar", data);
+    } catch (error) {
       return response.serverError(res, error.message, error);
     }
   }

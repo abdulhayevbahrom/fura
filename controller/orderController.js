@@ -294,6 +294,49 @@ class OrderController {
       return responses.serverError(res, err.message, err);
     }
   }
+
+  // get by car id
+  async getOrdersByCarId(req, res) {
+    try {
+      const { id, startDate, endDate } = req.params;
+      let filter = { car: id, deleted: false };
+
+      if (startDate && endDate) {
+        filter.createdAt = {
+          $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+        };
+      }
+      const orders = await Orders.find(filter)
+        .populate("driver", "firstName lastName")
+        .populate("car", "title number")
+        .populate("trailer", "number")
+        .populate("partner", "fullname")
+        .populate("part_id", "name");
+      if (!orders.length)
+        return responses.notFound(res, "Buyurtmalar topilmadi", []);
+      return responses.success(res, "Buyurtmalar topildi", orders);
+    } catch (err) {
+      return responses.serverError(res, err.message, err);
+    }
+  }
+
+  // get pending orders
+  async getPendingOrders(req, res) {
+    try {
+      const orders = await Orders.find({ state: "pending", deleted: false })
+        .populate("driver", "firstName lastName")
+        .populate("car", "title number")
+        .populate("trailer", "number")
+        .populate("partner", "fullname")
+        .populate("part_id", "name");
+      if (!orders.length)
+        return responses.notFound(res, "Buyurtmalar topilmadi", []);
+      return responses.success(res, "Buyurtmalar topildi", orders);
+    } catch (err) {
+      return responses.serverError(res, err.message, err);
+    }
+  }
 }
 
 module.exports = new OrderController();

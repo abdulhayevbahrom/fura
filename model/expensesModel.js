@@ -27,3 +27,26 @@ const expenseSchema = new Schema(
 );
 
 module.exports = model("expenses", expenseSchema);
+
+// {
+//             "car": {
+//                 "_id": "68ecf2034e6fba7b63edf2ba",
+//                 "title": "Chevrolet Malibu",
+//                 "number": "01A123AA",
+//                 "year": 2020,
+//                 "fuelFor100km": 8.5,
+//                 "probeg": 221700,
+//                 "licens": "2025-12-31",
+//                 "sugurta": "2025-06-30",
+//                 "status": false,
+//                 "createdAt": "2025-10-13T12:35:15.583Z",
+//                 "updatedAt": "2025-10-15T10:46:07.083Z",
+//                 "__v": 0
+//             },
+//             "totalOrders": 6,
+//             "totalPrice": 1004600,
+//             "totalExpenses": 2500,
+//             "totalRepairPrice": 0,
+//             "driverSalary": 101385,
+//             "profit": 903215
+//         },
