@@ -1,7 +1,5 @@
 const response = require("../utils/response");
 const Partner = require("../model/partnerModel");
-const Order = require("../model/orderModel");
-const Expense = require("../model/expensesModel");
 const mongoose = require("mongoose");
 
 class PartnerController {
@@ -30,17 +28,37 @@ class PartnerController {
 
   async getPartners(req, res) {
     try {
+      let { startDate, endDate } = req.query;
+
+      // 🗓️ Sana oralig'ini tayyorlash
+      let dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter = {
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)), // kuni tugashigacha
+          },
+        };
+      }
+
       const results = await Partner.aggregate([
         // 1️⃣ Faqat o'chirilmagan hamkorlar
         { $match: { deleted: false } },
 
-        // 2️⃣ Hamkorga tegishli orderlarni biriktirish
+        // 2️⃣ Hamkorga tegishli orderlarni biriktirish (sana bilan)
         {
           $lookup: {
             from: "orders",
             localField: "_id",
             foreignField: "partner",
-            pipeline: [{ $match: { deleted: false } }],
+            pipeline: [
+              {
+                $match: {
+                  deleted: false,
+                  ...dateFilter, // ← shu yerda sana oraliqlari qo'llanadi
+                },
+              },
+            ],
             as: "orders",
           },
         },
@@ -52,7 +70,7 @@ class PartnerController {
           },
         },
 
-        // 4️⃣ Expenslarni biriktirish
+        // 4️⃣ Expenslarni biriktirish (shu orderlarga bog‘lab)
         {
           $lookup: {
             from: "expenses",
@@ -84,10 +102,12 @@ class PartnerController {
             address: 1,
             createdAt: 1,
             updatedAt: 1,
-            // Hamkorning barcha fieldlari (kerakli bo'lganlarini qo'shing)
-            totalPrice: {
-              $sum: "$orders.totalPrice",
-            },
+
+            // 🧮 Jami orderlar soni
+            totalOrderLength: { $size: "$orders" },
+
+            // 💰 Jami narx va to‘lovlar
+            totalPrice: { $sum: "$orders.totalPrice" },
             paidAmount: {
               $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0],
             },
@@ -99,7 +119,7 @@ class PartnerController {
             },
           },
         },
-      ]);
+      ]).sort({ createdAt: -1 });
 
       if (!results.length) {
         return response.notFound(res, "Hamkorlar topilmadi");
@@ -110,6 +130,89 @@ class PartnerController {
       return response.serverError(res, err.message, err);
     }
   }
+
+  // async getPartners(req, res) {
+  //   try {
+  //     const results = await Partner.aggregate([
+  //       // 1️⃣ Faqat o'chirilmagan hamkorlar
+  //       { $match: { deleted: false } },
+
+  //       // 2️⃣ Hamkorga tegishli orderlarni biriktirish
+  //       {
+  //         $lookup: {
+  //           from: "orders",
+  //           localField: "_id",
+  //           foreignField: "partner",
+  //           pipeline: [{ $match: { deleted: false } }],
+  //           as: "orders",
+  //         },
+  //       },
+
+  //       // 3️⃣ Order IDlarni ajratib olish
+  //       {
+  //         $addFields: {
+  //           orderIds: "$orders._id",
+  //         },
+  //       },
+
+  //       // 4️⃣ Expenslarni biriktirish
+  //       {
+  //         $lookup: {
+  //           from: "expenses",
+  //           let: { orderIds: "$orderIds" },
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 $expr: { $in: ["$order_id", "$$orderIds"] },
+  //                 from: "client",
+  //                 deleted: false,
+  //               },
+  //             },
+  //             {
+  //               $group: {
+  //                 _id: null,
+  //                 totalPaid: { $sum: "$amount" },
+  //               },
+  //             },
+  //           ],
+  //           as: "payments",
+  //         },
+  //       },
+
+  //       // 5️⃣ Hisob-kitoblarni bajarish
+  //       {
+  //         $project: {
+  //           fullname: 1,
+  //           phone: 1,
+  //           address: 1,
+  //           createdAt: 1,
+  //           updatedAt: 1,
+  //           // Hamkorning barcha fieldlari (kerakli bo'lganlarini qo'shing)
+  //           totalPrice: {
+  //             $sum: "$orders.totalPrice",
+  //           },
+  //           paidAmount: {
+  //             $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0],
+  //           },
+  //           debt: {
+  //             $subtract: [
+  //               { $sum: "$orders.totalPrice" },
+  //               { $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0] },
+  //             ],
+  //           },
+  //         },
+  //       },
+  //     ]).sort({ createdAt: -1 });
+
+  //     if (!results.length) {
+  //       return response.notFound(res, "Hamkorlar topilmadi");
+  //     }
+
+  //     return response.success(res, "Hamkorlar va qarzlar ro'yxati", results);
+  //   } catch (err) {
+  //     return response.serverError(res, err.message, err);
+  //   }
+  // }
 
   // async getPartnerById(req, res) {
   //   try {
@@ -386,6 +489,30 @@ class PartnerController {
       return response.serverError(res, err.message, err);
     }
   }
+
+  // async getClientInfo(req, res) {
+  //   try {
+  //     let { startDate, endDate } = req.query;
+  //     let filter = { deleted: false };
+  //     if (startDate && endDate) {
+  //       filter.createdAt = {
+  //         $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
+  //         $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+  //       };
+  //     }
+
+  //     let allClients = await Client.find(filter)
+  //       .populate("partner", "fullname")
+  //       .populate("order_id", "totalPrice");
+  //     if (!allClients.length) {
+  //       return response.notFound(res, "Klientlar topilmadi");
+  //     }
+  //     return response.success(res, "Klientlar ma'lumotlari", allClients);
+
+  //   } catch (err) {
+  //     return response.serverError(res, err.message, err);
+  //   }
+  // }
 }
 
 module.exports = new PartnerController();

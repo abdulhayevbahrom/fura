@@ -195,7 +195,7 @@ class partController {
             firstCarId: 0,
           },
         },
-      ]);
+      ]).sort({ createdAt: -1 });
 
       if (!parts.length)
         return response.notFound(res, "Partiyalar topilmadi", []);
@@ -225,6 +225,21 @@ class partController {
         .populate("part_id", "name");
 
       return response.success(res, "Partiya topildi", { part, orders });
+    } catch (err) {
+      return response.serverError(res, err.message, err);
+    }
+  }
+
+  async getPartsByDriverId(req, res) {
+    try {
+      const { id } = req.params;
+      const parts = await Parts.find({
+        driver: id,
+        status: { $ne: "finished" },
+      });
+      if (!parts.length)
+        return response.notFound(res, "Partiyalar topilmadi", []);
+      return response.success(res, "Partiyalar topildi", parts);
     } catch (err) {
       return response.serverError(res, err.message, err);
     }

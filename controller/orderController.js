@@ -19,7 +19,8 @@ class OrderController {
         .populate("car", "title number")
         .populate("trailer", "number")
         .populate("partner", "fullname")
-        .populate("part_id", "name");
+        .populate("part_id", "name")
+        .sort({ createdAt: -1 });
 
       if (!orders.length) {
         return responses.notFound(res, "Buyurtmalar topilmadi");
@@ -49,7 +50,7 @@ class OrderController {
       const { driver_id } = req.params;
       const driver = await Drivers.findOne({
         _id: driver_id,
-        is_active: true,
+        // is_active: true,
       });
       if (!driver) return responses.notFound(res, "Haydovchi topilmadi");
       const orders = await Orders.find({
@@ -88,9 +89,12 @@ class OrderController {
         }
 
         // Yangi partiya yaratish
-        const newPart = await Parts.create([{ name: part_name.trim() }], {
-          session,
-        });
+        const newPart = await Parts.create(
+          [{ name: part_name.trim(), driver: req.body.driver }],
+          {
+            session,
+          }
+        );
         if (!newPart || !newPart[0]?._id) {
           await session.abortTransaction();
           session.endSession();
@@ -329,7 +333,8 @@ class OrderController {
         .populate("car", "title number")
         .populate("trailer", "number")
         .populate("partner", "fullname")
-        .populate("part_id", "name");
+        .populate("part_id", "name")
+        .sort({ createdAt: -1 });
       if (!orders.length)
         return responses.notFound(res, "Buyurtmalar topilmadi", []);
       return responses.success(res, "Buyurtmalar topildi", orders);

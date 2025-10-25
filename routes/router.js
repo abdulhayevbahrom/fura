@@ -106,6 +106,7 @@ const partController = require("../controller/partController");
 
 router.get("/parts/all", partController.getParts);
 router.get("/parts/:id", partController.getPartById);
+router.get("/parts/driver/:id", partController.getPartsByDriverId);
 router.put("/parts/status/:part_id", partController.changeStatus);
 
 // EXPENSES

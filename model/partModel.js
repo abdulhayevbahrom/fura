@@ -8,6 +8,7 @@ const partSchema = new Schema(
       default: "active",
       enum: ["active", "in_progress", "finished"],
     },
+    driver: { type: Schema.Types.ObjectId, ref: "drivers", default: null },
   },
   {
     timestamps: true,

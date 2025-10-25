@@ -23,7 +23,9 @@ class SalaryController {
 
   async getAllPaymetns(req, res) {
     try {
-      const payments = await Salary.find().populate("driver");
+      const payments = await Salary.find()
+        .populate("driver")
+        .sort({ createdAt: -1 });
       if (!payments.length)
         return response.notFound(res, "To'lovlar topilmadi");
       return response.success(res, "To'lovlar topildi", payments);
