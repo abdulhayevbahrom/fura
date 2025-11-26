@@ -2,12 +2,12 @@ const Cars = require("../model/carModel");
 const response = require("../utils/response");
 const Expenses = require("../model/expensesModel");
 const mongoose = require("mongoose");
-const Orders = require("../model/orderModel");
 
 class carsController {
   async getAllCars(req, res) {
     try {
       const cars = await Cars.aggregate([
+        { $match: { deleted: { $ne: true } } }, // <-- faqat deleted=false
         {
           $project: {
             title: 1,
@@ -15,11 +15,7 @@ class carsController {
             year: 1,
             fuelFor100km: 1,
             probeg: 1,
-            licens: 1,
-            sugurta: 1,
             status: 1,
-            vehicles: 1,
-            cpu: 1,
             image: {
               $cond: {
                 if: { $ifNull: ["$image", false] },
@@ -41,6 +37,32 @@ class carsController {
     }
   }
 
+  // get car vehicles
+  async getCarVehicles(req, res) {
+    try {
+      const car = await Cars.findOne({ _id: req.params.id }).select("vehicles");
+      if (!car) {
+        return response.notFound(res, "Mashina gildiraklari topilmadi", []);
+      }
+      return response.success(res, "Mashina gildiraklari", car?.vehicles);
+    } catch (error) {
+      return response.serverError(res, error.message, error);
+    }
+  }
+
+  // get car cpu
+  async getCarCpu(req, res) {
+    try {
+      const car = await Cars.findOne({ _id: req.params.id }).select("cpu");
+      if (!car) {
+        return response.notFound(res, "Mashina microsxemasi topilmadi", []);
+      }
+      return response.success(res, "Mashina microsxemasi", car?.cpu);
+    } catch (error) {
+      return response.serverError(res, error.message, error);
+    }
+  }
+
   async getCarById(req, res) {
     try {
       const car = await Cars.aggregate([
@@ -54,8 +76,6 @@ class carsController {
             year: 1,
             fuelFor100km: 1,
             probeg: 1,
-            licens: 1,
-            sugurta: 1,
             status: 1,
             image: {
               $cond: {
@@ -94,7 +114,10 @@ class carsController {
   // delete
   async deleteCar(req, res) {
     try {
-      const car = await Cars.findByIdAndDelete(req.params.id);
+      // const car = await Cars.findByIdAndDelete(req.params.id);
+      const car = await Cars.findByIdAndUpdate(req.params.id, {
+        deleted: true,
+      });
       if (!car) return response.notFound(res, "Mashina topilmadi");
       return response.success(res, "Mashina o'chirildi", car);
     } catch (error) {
@@ -128,12 +151,11 @@ class carsController {
 
   // Gildirak qo'shish
   async changeVehicles(req, res) {
-    // Transaction uchun session yaratish
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      const { carId, vehicles, paymentType } = req.body;
+      const { carId, vehicles = {}, paymentType } = req.body;
 
       let drive = await Cars.findById(carId).session(session);
       if (!drive) {
@@ -142,127 +164,35 @@ class carsController {
         return response.notFound(res, "Mashina topilmadi");
       }
 
-      if (vehicles?.right_front) {
-        drive.vehicles.right_front.unshift(vehicles.right_front);
-        const newVehicleId = drive.vehicles.right_front[0]._id;
+      let DESCRIPTIONS = {
+        right_front: "oldi o'ng gildirak o'zgartirildi",
+        left_front: "oldi chap gildirak o'zgartirildi",
+        right_back: "oldi o'ng gildirak o'zgartirildi",
+        left_back: "oldi chap gildirak o'zgartirildi",
+        back_right_in: "oldi o'ng gildirak o'zgartirildi",
+        back_left_in: "oldi chap gildirak o'zgartirildi",
+        additional_left: "oldi chap gildirak o'zgartirildi",
+        additional_right: "oldi o'ng gildirak o'zgartirildi",
+        extra_tir: "oldi chap gildirak o'zgartirildi",
+      };
+
+      for (const [pos, vehicleData] of Object.entries(vehicles)) {
+        if (!vehicleData) continue;
+
+        // trailer schema’da bormi?
+        if (!trailer.vehicles?.[pos]) continue;
+
+        drive.vehicles[pos].unshift(vehicleData);
+        const newVehicleId = drive.vehicles[pos][0]._id;
 
         await Expenses.create(
           [
             {
               vehicleId: newVehicleId,
-              name: vehicles.right_front.name,
-              amount: vehicles.right_front.price,
-              description: "oldi o'ng gildirak o'zgartirildi",
-              car: carId,
-              quantity: 1,
-              category: "vehicle",
-              type: "repair",
-              paymentType: paymentType,
-            },
-          ],
-          { session }
-        );
-      }
-
-      if (vehicles?.left_front) {
-        drive.vehicles.left_front.unshift(vehicles.left_front);
-        const newVehicleId = drive.vehicles.left_front[0]._id;
-
-        await Expenses.create(
-          [
-            {
-              vehicleId: newVehicleId,
-              name: vehicles.left_front.name,
-              amount: vehicles.left_front.price,
-              description: "oldi chap gildirak o'zgartirildi",
-              car: carId,
-              quantity: 1,
-              category: "vehicle",
-              type: "repair",
-              paymentType: paymentType,
-            },
-          ],
-          { session }
-        );
-      }
-
-      if (vehicles?.right_back) {
-        drive.vehicles.right_back.unshift(vehicles.right_back);
-        const newVehicleId = drive.vehicles.right_back[0]._id;
-
-        await Expenses.create(
-          [
-            {
-              vehicleId: newVehicleId,
-              name: vehicles.right_back.name,
-              amount: vehicles.right_back.price,
-              description: "orqa o'ng gildirak o'zgartirildi",
-              car: carId,
-              quantity: 1,
-              category: "vehicle",
-              type: "repair",
-              paymentType: paymentType,
-            },
-          ],
-          { session }
-        );
-      }
-
-      if (vehicles?.left_back) {
-        drive.vehicles.left_back.unshift(vehicles.left_back);
-        const newVehicleId = drive.vehicles.left_back[0]._id;
-
-        await Expenses.create(
-          [
-            {
-              vehicleId: newVehicleId,
-              name: vehicles.left_back.name,
-              amount: vehicles.left_back.price,
-              description: "orqa chap gildirak o'zgartirildi",
-              car: carId,
-              quantity: 1,
-              category: "vehicle",
-              type: "repair",
-              paymentType: paymentType,
-            },
-          ],
-          { session }
-        );
-      }
-
-      if (vehicles?.back_right_in) {
-        drive.vehicles.back_right_in.unshift(vehicles.back_right_in);
-        const newVehicleId = drive.vehicles.back_right_in[0]._id;
-
-        await Expenses.create(
-          [
-            {
-              vehicleId: newVehicleId,
-              name: vehicles.back_right_in.name,
-              amount: vehicles.back_right_in.price,
-              description: "orqa o'ng ichki gildirak o'zgartirildi",
-              car: carId,
-              quantity: 1,
-              category: "vehicle",
-              type: "repair",
-              paymentType: paymentType,
-            },
-          ],
-          { session }
-        );
-      }
-
-      if (vehicles?.back_left_in) {
-        drive.vehicles.back_left_in.unshift(vehicles.back_left_in);
-        const newVehicleId = drive.vehicles.back_left_in[0]._id;
-
-        await Expenses.create(
-          [
-            {
-              vehicleId: newVehicleId,
-              name: vehicles.back_left_in.name,
-              amount: vehicles.back_left_in.price,
-              description: "orqa chap ichki gildirak o'zgartirildi",
+              name: vehicleData.name,
+              amount: vehicleData.price,
+              currency_id: vehicleData.currency_id,
+              description: DESCRIPTIONS[pos],
               car: carId,
               quantity: 1,
               category: "vehicle",
@@ -303,188 +233,61 @@ class carsController {
         return response.notFound(res, "Mashina topilmadi");
       }
 
-      // O'ng old gildirak
-      if (vehicles?.right_front) {
-        let vehicleIndex = car.vehicles.right_front.findIndex(
-          (v) => v._id.toString() === vehicles.right_front._id
+      // Yagona maydonlar ro'yxati
+      const fields = [
+        "right_front",
+        "left_front",
+        "right_back",
+        "left_back",
+        "back_right_in",
+        "back_left_in",
+        "additional_left",
+        "additional_right",
+        "extra_tir",
+      ];
+
+      for (const field of fields) {
+        if (!vehicles[field]) continue; // agar bu field jo'natilmagan bo'lsa skip
+
+        let arr = car.vehicles[field];
+        if (!Array.isArray(arr)) continue;
+
+        let updatedItem = vehicles[field];
+
+        let idx = arr.findIndex((v) => v._id.toString() === updatedItem._id);
+        if (idx === -1) continue;
+
+        // Update name
+        arr[idx].name = updatedItem.name || arr[idx].name;
+
+        // Update price
+        arr[idx].price = updatedItem.price || arr[idx].price;
+
+        // update currency_id
+        arr[idx].currency_id = updatedItem.currency_id || arr[idx].currency_id;
+
+        // Expense update
+        await Expenses.findOneAndUpdate(
+          {
+            vehicleId: updatedItem._id,
+            type: "repair",
+            category: "vehicle",
+          },
+          {
+            name: arr[idx].name,
+            amount: arr[idx].price,
+          },
+          { new: true, session }
         );
-
-        if (vehicleIndex !== -1) {
-          car.vehicles.right_front[vehicleIndex].name =
-            vehicles.right_front.name ||
-            car.vehicles.right_front[vehicleIndex].name;
-          car.vehicles.right_front[vehicleIndex].price =
-            vehicles.right_front.price ||
-            car.vehicles.right_front[vehicleIndex].price;
-
-          await Expenses.findOneAndUpdate(
-            {
-              vehicleId: vehicles.right_front._id,
-              type: "repair",
-              category: "vehicle",
-            },
-            {
-              name: car.vehicles.right_front[vehicleIndex].name,
-              amount: car.vehicles.right_front[vehicleIndex].price,
-            },
-            { new: true, session }
-          );
-        }
       }
 
-      // Chap old gildirak
-      if (vehicles?.left_front) {
-        let vehicleIndex = car.vehicles.left_front.findIndex(
-          (v) => v._id.toString() === vehicles.left_front._id
-        );
-
-        if (vehicleIndex !== -1) {
-          car.vehicles.left_front[vehicleIndex].name =
-            vehicles.left_front.name ||
-            car.vehicles.left_front[vehicleIndex].name;
-          car.vehicles.left_front[vehicleIndex].price =
-            vehicles.left_front.price ||
-            car.vehicles.left_front[vehicleIndex].price;
-
-          await Expenses.findOneAndUpdate(
-            {
-              vehicleId: vehicles.left_front._id,
-              type: "repair",
-              category: "vehicle",
-            },
-            {
-              name: car.vehicles.left_front[vehicleIndex].name,
-              amount: car.vehicles.left_front[vehicleIndex].price,
-            },
-            { new: true, session }
-          );
-        }
-      }
-
-      // O'ng orqa gildirak
-      if (vehicles?.right_back) {
-        let vehicleIndex = car.vehicles.right_back.findIndex(
-          (v) => v._id.toString() === vehicles.right_back._id
-        );
-
-        if (vehicleIndex !== -1) {
-          car.vehicles.right_back[vehicleIndex].name =
-            vehicles.right_back.name ||
-            car.vehicles.right_back[vehicleIndex].name;
-          car.vehicles.right_back[vehicleIndex].price =
-            vehicles.right_back.price ||
-            car.vehicles.right_back[vehicleIndex].price;
-
-          await Expenses.findOneAndUpdate(
-            {
-              vehicleId: vehicles.right_back._id,
-              type: "repair",
-              category: "vehicle",
-            },
-            {
-              name: car.vehicles.right_back[vehicleIndex].name,
-              amount: car.vehicles.right_back[vehicleIndex].price,
-            },
-            { new: true, session }
-          );
-        }
-      }
-
-      // Chap orqa gildirak
-      if (vehicles?.left_back) {
-        let vehicleIndex = car.vehicles.left_back.findIndex(
-          (v) => v._id.toString() === vehicles.left_back._id
-        );
-
-        if (vehicleIndex !== -1) {
-          car.vehicles.left_back[vehicleIndex].name =
-            vehicles.left_back.name ||
-            car.vehicles.left_back[vehicleIndex].name;
-          car.vehicles.left_back[vehicleIndex].price =
-            vehicles.left_back.price ||
-            car.vehicles.left_back[vehicleIndex].price;
-
-          await Expenses.findOneAndUpdate(
-            {
-              vehicleId: vehicles.left_back._id,
-              type: "repair",
-              category: "vehicle",
-            },
-            {
-              name: car.vehicles.left_back[vehicleIndex].name,
-              amount: car.vehicles.left_back[vehicleIndex].price,
-            },
-            { new: true, session }
-          );
-        }
-      }
-
-      // O'ng ichki gildirak
-      if (vehicles?.back_right_in) {
-        let vehicleIndex = car.vehicles.back_right_in.findIndex(
-          (v) => v._id.toString() === vehicles.back_right_in._id
-        );
-
-        if (vehicleIndex !== -1) {
-          car.vehicles.back_right_in[vehicleIndex].name =
-            vehicles.back_right_in.name ||
-            car.vehicles.back_right_in[vehicleIndex].name;
-          car.vehicles.back_right_in[vehicleIndex].price =
-            vehicles.back_right_in.price ||
-            car.vehicles.back_right_in[vehicleIndex].price;
-
-          await Expenses.findOneAndUpdate(
-            {
-              vehicleId: vehicles.back_right_in._id,
-              type: "repair",
-              category: "vehicle",
-            },
-            {
-              name: car.vehicles.back_right_in[vehicleIndex].name,
-              amount: car.vehicles.back_right_in[vehicleIndex].price,
-            },
-            { new: true, session }
-          );
-        }
-      }
-
-      // Chap ichki gildirak
-      if (vehicles?.back_left_in) {
-        let vehicleIndex = car.vehicles.back_left_in.findIndex(
-          (v) => v._id.toString() === vehicles.back_left_in._id
-        );
-
-        if (vehicleIndex !== -1) {
-          car.vehicles.back_left_in[vehicleIndex].name =
-            vehicles.back_left_in.name ||
-            car.vehicles.back_left_in[vehicleIndex].name;
-          car.vehicles.back_left_in[vehicleIndex].price =
-            vehicles.back_left_in.price ||
-            car.vehicles.back_left_in[vehicleIndex].price;
-
-          await Expenses.findOneAndUpdate(
-            {
-              vehicleId: vehicles.back_left_in._id,
-              type: "repair",
-              category: "vehicle",
-            },
-            {
-              name: car.vehicles.back_left_in[vehicleIndex].name,
-              amount: car.vehicles.back_left_in[vehicleIndex].price,
-            },
-            { new: true, session }
-          );
-        }
-      }
-
-      // MUHIM: Car ni saqlash
+      // Car ni saqlash
       await car.save({ session });
 
-      // Hammasi muvaffaqiyatli bo'lsa commit
       await session.commitTransaction();
       session.endSession();
 
-      return response.success(res, "Gildirak yangilandi", car);
+      return response.success(res, "Gildiraklar yangilandi", car);
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
@@ -497,7 +300,6 @@ class carsController {
   // ============================================
 
   // CPU qo'shish
-  // CPU qo'shish
   async addCPU(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -505,15 +307,15 @@ class carsController {
     try {
       const { carId, cpu, paymentType } = req.body;
 
-      let drive = await Cars.findById(carId).session(session);
-      if (!drive) {
+      let car = await Cars.findById(carId).session(session);
+      if (!car) {
         await session.abortTransaction();
         session.endSession();
         return response.notFound(res, "Mashina topilmadi");
       }
 
-      drive.cpu.unshift(cpu);
-      const newCpuId = drive.cpu[drive.cpu.length - 1]._id;
+      car.cpu.unshift(cpu);
+      const newCpuId = car.cpu[0]._id;
 
       // Expense log for the new CPU
       await Expenses.create(
@@ -522,6 +324,7 @@ class carsController {
             cpuId: newCpuId,
             name: `${cpu.marka} ${cpu.model}`,
             amount: cpu.price || 0,
+            currency_id: cpu.currency_id,
             description: "Yangi CPU qo'shildi",
             car: carId,
             quantity: 1,
@@ -533,12 +336,12 @@ class carsController {
         { session }
       );
 
-      await drive.save({ session });
+      await car.save({ session });
 
       await session.commitTransaction();
       session.endSession();
 
-      return response.success(res, "CPU qo'shildi", drive);
+      return response.success(res, "CPU qo'shildi", car.cpu[0]);
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
@@ -575,7 +378,14 @@ class carsController {
       const existingCpu = car.cpu[cpuIndex];
 
       // Update CPU fields if provided
-      const fieldsToUpdate = ["marka", "model", "year", "number", "price"];
+      const fieldsToUpdate = [
+        "marka",
+        "model",
+        "year",
+        "number",
+        "price",
+        "currency_id",
+      ];
       fieldsToUpdate.forEach((field) => {
         if (cpu[field] !== undefined) {
           existingCpu[field] = cpu[field];
@@ -592,6 +402,7 @@ class carsController {
         {
           name: `${existingCpu.marka} ${existingCpu.model}`,
           amount: existingCpu.price || 0,
+          currency_id: existingCpu.currency_id,
           description: "CPU ma'lumotlari yangilandi",
           paymentType: paymentType,
         },
@@ -612,76 +423,6 @@ class carsController {
       return response.serverError(res, error.message, error);
     }
   }
-
-  // async getStatictics(req, res) {
-  //   try {
-  //     let { startDate, endDate } = req.query;
-  //     let filter = {};
-  //     if (startDate && endDate) {
-  //       filter.createdAt = {
-  //         $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
-  //         $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
-  //       };
-  //     }
-
-  //     let carsData = await Cars.find(filter).select("-vehicles").select("-cpu");
-
-  //     let data = [];
-
-  //     for (const car of carsData) {
-  //       let orders = await Orders.find({
-  //         car: car._id,
-  //         deleted: false,
-  //       });
-
-  //       let totalPrice = orders.reduce((total, order) => {
-  //         return total + order.totalPrice;
-  //       }, 0);
-
-  //       let driverSalary = orders.reduce((total, order) => {
-  //         return total + order.driver_salary;
-  //       }, 0);
-
-  //       let expenses = await Expenses.find({
-  //         car: car._id,
-  //         type: "repair",
-  //         deleted: false,
-  //       });
-
-  //       let totalRepairPrice = expenses.reduce((total, expense) => {
-  //         return total + expense.amount;
-  //       }, 0);
-
-  //       let orderIds = orders.map((order) => order._id);
-  //       let orderExpenses = await Expenses.find({
-  //         order_id: { $in: orderIds },
-  //         type: "order_expense",
-  //         deleted: false,
-  //       });
-
-  //       let totalOrderExpense = orderExpenses.reduce((total, expense) => {
-  //         return total + expense.amount;
-  //       }, 0);
-
-  //       data.push({
-  //         car: car,
-  //         totalOrders: orders.length,
-  //         totalPrice: totalPrice,
-  //         totalExpenses: totalRepairPrice + totalOrderExpense + driverSalary,
-  //         totalRepairPrice: totalRepairPrice,
-  //         driverSalary: driverSalary,
-  //         profit: totalPrice - totalRepairPrice - driverSalary,
-  //       });
-  //     }
-
-  //     if (!data.length)
-  //       return response.notFound(res, "Ma'lumotlar topilmadi", []);
-
-  //     return response.success(res, "Ma'lumotlar", data);
-  //   } catch (error) {
-  //     return response.serverError(res, error.message, error);
-  //   }
-  // }
 
   async getStatictics(req, res) {
     try {

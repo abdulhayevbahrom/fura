@@ -2,8 +2,9 @@ const { Schema, model } = require("mongoose");
 
 const vehicleSchema = new Schema(
   {
-    name: { type: String, required: true }, // Gildirak nomi/turi
+    name: { type: String }, // Gildirak nomi/turi
     price: { type: Number, default: 0 }, // Narxi
+    currency_id: { type: Schema.Types.ObjectId, ref: "currency" },
     deleted: { type: Boolean, default: false }, // O'chirilgan yoki yo'q
   },
   { timestamps: true }
@@ -11,11 +12,12 @@ const vehicleSchema = new Schema(
 
 const cpuSchema = new Schema(
   {
-    marka: { type: String, required: true },
-    model: { type: String, required: true },
-    year: { type: Number, required: true },
-    number: { type: String, required: true },
+    marka: { type: String, default: "" },
+    model: { type: String, default: "" },
+    year: { type: Number, default: 0 },
+    number: { type: String, default: "" },
     price: { type: Number, default: 0 },
+    currency_id: { type: Schema.Types.ObjectId, ref: "currency" },
   },
   { timestamps: true }
 );
@@ -26,7 +28,7 @@ const carsSchema = new Schema(
     title: { type: String, required: true },
     number: { type: String, required: true },
     year: { type: Number, required: true },
-    fuelFor100km: { type: Number, required: true },
+
     probeg: { type: Number, required: true },
     vehicles: {
       right_front: [vehicleSchema],
@@ -35,11 +37,13 @@ const carsSchema = new Schema(
       left_back: [vehicleSchema],
       back_right_in: [vehicleSchema],
       back_left_in: [vehicleSchema],
+      additional_left: [vehicleSchema],
+      additional_right: [vehicleSchema],
+      extra_tir: [vehicleSchema],
     },
     cpu: [cpuSchema],
-    licens: { type: String, required: true }, // ← Date o‘rniga String
-    sugurta: { type: String, required: true }, // ← Date o‘rniga String
-    status: { type: Boolean, default: true },
+    status: { type: Boolean, default: false },
+    deleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

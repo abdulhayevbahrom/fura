@@ -10,7 +10,7 @@ const driversValidation = (req, res, next) => {
     properties: {
       firstName: { type: "string", minLength: 2, maxLength: 50 },
       lastName: { type: "string", minLength: 2, maxLength: 50 },
-      phone: { type: "string", minLength: 9, maxLength: 9 },
+      phone: { type: "string" },
       address: { type: "string", minLength: 2, maxLength: 50 },
       login: {
         type: "string",
@@ -18,7 +18,7 @@ const driversValidation = (req, res, next) => {
         maxLength: 20,
         pattern: "^[a-zA-Z0-9]+$",
       },
-      password: { type: "string", minLength: 6, maxLength: 50 },
+      password: { type: "string", minLength: 1 },
       role: {
         type: "string",
         default: "driver",
@@ -40,7 +40,7 @@ const driversValidation = (req, res, next) => {
           "Ism 2-50 ta belgi oralig'ida bo'lishi kerak string turida bolsin",
         lastName:
           "Familiya 2-50 ta belgi oralig'ida bo'lishi kerak string turida bolsin",
-        phone: "Telefon raqami 9 belgidan iborat bo'lishi kerak",
+        phone: "Telefon  raqami string turida bolsin",
         address:
           "Manzil 2-50 ta belgi oralig'ida bo'lishi kerak string turida bolsin",
         role: "Role string turida bolsin",

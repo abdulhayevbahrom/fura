@@ -19,7 +19,8 @@ function createImageUploadHandler(props) {
 
     try {
       if (!file) {
-        return response.warning(res, "Rasm yuklash uchun fayl tanlang.");
+        return next();
+        // return response.warning(res, "Rasm yuklash uchun fayl tanlang.");
       }
 
       if (!file.mimetype.startsWith("image/")) {

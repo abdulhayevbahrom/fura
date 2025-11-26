@@ -38,8 +38,16 @@ const expenseValidation = (req, res, next) => {
         enum: ["naqd", "karta"],
         default: "naqd",
       },
+      currency_id: { type: "string" },
     },
-    required: ["name", "amount", "category", "type", "paymentType"],
+    required: [
+      "name",
+      "amount",
+      "category",
+      "type",
+      "paymentType",
+      "currency_id",
+    ],
     additionalProperties: false,
     errorMessage: {
       required: {
@@ -49,6 +57,7 @@ const expenseValidation = (req, res, next) => {
         type: "Xarajat turi kiritilishi shart, repair yoki order_expense yoki office_expense bo'lishi kerak",
         paymentType:
           "To'lov turi kiritilishi shart, naqd yoki karta bo'lishi kerak",
+        currency_id: "Valyuta kiritilishi shart",
       },
       properties: {
         name: "Xarajat nomi kamida 1 ta belgidan iborat bo'lishi kerak",
@@ -56,6 +65,7 @@ const expenseValidation = (req, res, next) => {
         category: "Xarajat kategoriyasi kiritilishi shart",
         type: "Xarajat turi repair yoki order_expense yoki office_expense bo'lishi kerak",
         paymentType: "To'lov turi naqd yoki karta bo'lishi kerak",
+        currency_id: "Valyuta kiritilishi shart",
       },
       additionalProperties: "Ruxsat etilmagan maydon kiritildi",
     },

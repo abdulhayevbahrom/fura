@@ -4,6 +4,7 @@ const expenseSchema = new Schema(
   {
     name: { type: String, required: true },
     amount: { type: Number, required: true },
+    currency_id: { type: Schema.Types.ObjectId, ref: "currency" },
     from: {
       type: String,
       enum: ["owner", "client", "expense"],

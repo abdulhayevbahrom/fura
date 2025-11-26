@@ -25,6 +25,8 @@ const carsValidation = require("../validation/carsValidation");
 // CARS - Asosiy CRUD operatsiyalar
 router.get("/cars/static", carsController.getStatictics);
 router.get("/cars/all", carsController.getAllCars);
+router.get("/cars/vehicles/:id", carsController.getCarVehicles);
+router.get("/cars/cpu/:id", carsController.getCarCpu);
 router.get("/cars/:id", carsController.getCarById);
 router.post(
   "/cars/create",
@@ -46,22 +48,13 @@ router.put("/cars/update-cpu", carsController.updateCPU);
 
 // TRAILERS
 const trailerController = require("../controller/trailerController");
-const trailerValidation = require("../validation/trailerValidation");
 
 router.get("/trailers/all", trailerController.getAllTrailers);
-router.post(
-  "/trailers/create",
-  trailerValidation,
-  trailerController.createTrailer
-);
+router.post("/trailers/create", trailerController.createTrailer);
 router.delete("/trailers/delete/:id", trailerController.deleteTrailer);
-router.put(
-  "/trailers/update/:id",
-  trailerValidation,
-  trailerController.updateTrailer
-);
+router.put("/trailers/update/:id", trailerController.updateTrailer);
 router.put("/trailers/change-vehicles", trailerController.changeVehicles);
-router.put("/trailers/update-vehicle", trailerController.updateVehicle);
+router.put("/trailers/edit-vehicle", trailerController.updateVehicle);
 
 // DRIVERS
 const drivesController = require("../controller/driversController");
@@ -150,5 +143,32 @@ router.get("/salary/:driver", salaryController.getByDriverId);
 // DASHBOARD
 const dashboardController = require("../controller/dashboardController");
 router.get("/dashboard", dashboardController.getDashboardData);
+
+// Currency
+const currencyController = require("../controller/currencyController");
+router.get("/currency/all", currencyController.getAll);
+router.get("/currency/:id", currencyController.getById);
+router.post("/currency/create", currencyController.create);
+router.delete("/currency/delete/:id", currencyController.delete);
+router.put("/currency/update/:id", currencyController.update);
+
+/// License
+const licenseController = require("../controller/licensesController");
+router.get("/license/all", licenseController.getAll);
+router.get("/license/car/story/:id", licenseController.getByCarIdStory);
+router.get("/license/trailer/story/:id", licenseController.getByTrailerIdStory);
+router.get("/license/car/:id", licenseController.getByCarId);
+router.get("/license/trailer/:id", licenseController.getByTrailerId);
+router.post("/license/create", licenseController.create);
+router.delete("/license/delete/:id", licenseController.delete);
+router.put("/license/update/:id", licenseController.update);
+router.put("/license/edit/:id", licenseController.edit);
+
+// FUEL
+const fuelController = require("../controller/fuelController");
+router.get("/fuel/all", fuelController.getFuels);
+router.post("/fuel/create", fuelController.create);
+router.delete("/fuel/delete/:id", fuelController.delete);
+router.put("/fuel/update/:id", fuelController.update);
 
 module.exports = router;
