@@ -3,10 +3,52 @@ const Expense = require("../model/expensesModel");
 const Order = require("../model/orderModel");
 
 class ExpensesController {
+  // async getAll(req, res) {
+  //   try {
+  //     let { startDate, endDate, category, car, type, from } = req.query;
+  //     let filter = { deleted: false };
+  //     if (startDate && endDate) {
+  //       filter.createdAt = {
+  //         $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
+  //         $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+  //       };
+  //     }
+  //     if (category) {
+  //       filter.category = category;
+  //     }
+  //     if (car) {
+  //       filter.car = car;
+  //     }
+  //     if (type) {
+  //       filter.type = type;
+  //     }
+  //     if (from) {
+  //       filter.from = from;
+  //     }
+
+  //     let repairs = await Expense.find(filter)
+  //       .sort({ createdAt: -1 })
+  //       .populate("car", "title number")
+  //       .populate("trailer", "number")
+  //       .populate("order_id");
+  //     if (!repairs.length) {
+  //       return response.notFound(res, "Harajatlar topilmadi");
+  //     }
+  //     return response.success(
+  //       res,
+  //       "Harajatlar muvaffaqiyatli topildi",
+  //       repairs
+  //     );
+  //   } catch (error) {
+  //     return response.error(res, error.message, error);
+  //   }
+  // }
+
   async getAll(req, res) {
     try {
       let { startDate, endDate, category, car, type, from } = req.query;
       let filter = { deleted: false };
+
       if (startDate && endDate) {
         filter.createdAt = {
           $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
@@ -30,14 +72,32 @@ class ExpensesController {
         .sort({ createdAt: -1 })
         .populate("car", "title number")
         .populate("trailer", "number")
-        .populate("order_id");
+        .populate("order_id")
+        .populate("currency_id", "name rate"); // YANGI: valyuta ma'lumotlari
+
       if (!repairs.length) {
         return response.notFound(res, "Harajatlar topilmadi");
       }
+
+      // Valyuta bo'yicha bazaviy summani hisoblash
+      const normalizedRepairs = repairs.map((item) => {
+        const obj = item.toObject();
+
+        const rate = obj.currency_id?.rate || 1;
+        const currencyName = obj.currency_id?.name || null;
+
+        return {
+          ...obj,
+          amountBase: obj.amount * rate, // bitta valyutada (masalan, UZS) hisoblangan qiymat
+          currencyName,
+          currencyRate: rate,
+        };
+      });
+
       return response.success(
         res,
         "Harajatlar muvaffaqiyatli topildi",
-        repairs
+        normalizedRepairs
       );
     } catch (error) {
       return response.error(res, error.message, error);

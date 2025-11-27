@@ -8,6 +8,7 @@ const orderSchema = new Schema(
     trailer: { type: Schema.Types.ObjectId, ref: "trailers" },
     partner: { type: Schema.Types.ObjectId, ref: "partners" },
     driver_salary: { type: Number, default: 0 },
+    driver_salary_currency_id: { type: Schema.Types.ObjectId, ref: "currency" },
     status: { type: Boolean, default: true },
     state: {
       type: String,
@@ -21,6 +22,7 @@ const orderSchema = new Schema(
     to: { type: String, required: true },
     distance: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
+    currency_id: { type: Schema.Types.ObjectId, ref: "currency" },
     deleted: { type: Boolean, default: false },
   },
   {

@@ -5,6 +5,7 @@ const Drivers = require("../model/driversModel");
 const Cars = require("../model/carModel");
 const Parts = require("../model/partModel");
 const Trailers = require("../model/trailerModel");
+const Expenses = require("../model/expensesModel");
 
 class OrderController {
   async getOrders(req, res) {
@@ -72,7 +73,7 @@ class OrderController {
     session.startTransaction();
 
     try {
-      let { part_name, ...rest } = req.body;
+      let { part_name, deposit, ...rest } = req.body;
       let part_id = req.body.part_id;
 
       // Agar part_id kiritilmagan bo'lsa, part_name orqali yangi partiya yaratamiz
@@ -90,7 +91,15 @@ class OrderController {
 
         // Yangi partiya yaratish
         const newPart = await Parts.create(
-          [{ name: part_name.trim(), driver: req.body.driver }],
+          [
+            {
+              name: part_name.trim(),
+              avarage_fuel: req.body.avarage_fuel,
+              start_fuel: req.body.start_fuel,
+              start_probeg: req.body.start_probeg,
+              driver: req.body.driver,
+            },
+          ],
           {
             session,
           }
@@ -100,8 +109,26 @@ class OrderController {
           session.endSession();
           return responses.error(res, "Partiya qo‘shilmadi");
         }
-
         part_id = newPart[0]._id;
+        if (deposit > 0) {
+          await Expenses.create(
+            [
+              {
+                name: "Deposit kirim " + part_name.trim(),
+                amount: deposit,
+                currency_id: req.body.deposit_currency_id,
+                from: "owner",
+                order_id: null,
+                part_id: part_id,
+                description: "Deposit kirim " + part_name.trim() + " uchun",
+                paymentType: req.body.deposit_paymentType,
+                category: "deposit",
+                type: "order_expense",
+              },
+            ],
+            { session }
+          );
+        }
       }
 
       // Mavjud partiyani olish

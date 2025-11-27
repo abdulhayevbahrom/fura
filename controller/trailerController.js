@@ -3,12 +3,39 @@ const Trailers = require("../model/trailerModel");
 const Expenses = require("../model/expensesModel");
 const mongoose = require("mongoose");
 
+// Schema’dagi barcha pozitsiyalar ro‘yxati
+const VEHICLE_POSITIONS = [
+  "left_front",
+  "left_front_2",
+  "right_front",
+  "right_front_2",
+  "left_back",
+  "left_back_2",
+  "right_back",
+  "right_back_2",
+  "left_center",
+  "left_center_2",
+  "right_center",
+  "right_center_2",
+  "extra_tir",
+];
+
 class trailerController {
   async getAllTrailers(req, res) {
     try {
-      const trailers = await Trailers.find({ deleted: false });
-      if (!trailers.length)
+      // populate uchun pathlar massivini tayyorlaymiz
+      const populatePaths = VEHICLE_POSITIONS.map((pos) => ({
+        path: `vehicles.${pos}.currency_id`,
+      }));
+
+      const trailers = await Trailers.find({ deleted: false }).populate(
+        populatePaths
+      );
+
+      if (!trailers.length) {
         return response.notFound(res, "Pritseplar topilmadi", []);
+      }
+
       return response.success(res, "Pritseplar topildi", trailers);
     } catch (error) {
       return response.serverError(res, "Server Error", error);

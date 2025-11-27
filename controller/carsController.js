@@ -40,11 +40,25 @@ class carsController {
   // get car vehicles
   async getCarVehicles(req, res) {
     try {
-      const car = await Cars.findOne({ _id: req.params.id }).select("vehicles");
+      const car = await Cars.findOne({ _id: req.params.id })
+        .select("vehicles")
+        .populate([
+          { path: "vehicles.right_front.currency_id" },
+          { path: "vehicles.left_front.currency_id" },
+          { path: "vehicles.right_back.currency_id" },
+          { path: "vehicles.left_back.currency_id" },
+          { path: "vehicles.back_right_in.currency_id" },
+          { path: "vehicles.back_left_in.currency_id" },
+          { path: "vehicles.additional_left.currency_id" },
+          { path: "vehicles.additional_right.currency_id" },
+          { path: "vehicles.extra_tir.currency_id" },
+        ]);
+
       if (!car) {
         return response.notFound(res, "Mashina gildiraklari topilmadi", []);
       }
-      return response.success(res, "Mashina gildiraklari", car?.vehicles);
+
+      return response.success(res, "Mashina gildiraklari", car.vehicles);
     } catch (error) {
       return response.serverError(res, error.message, error);
     }
@@ -53,7 +67,9 @@ class carsController {
   // get car cpu
   async getCarCpu(req, res) {
     try {
-      const car = await Cars.findOne({ _id: req.params.id }).select("cpu");
+      const car = await Cars.findOne({ _id: req.params.id })
+        .select("cpu")
+        .populate("cpu.currency_id");
       if (!car) {
         return response.notFound(res, "Mashina microsxemasi topilmadi", []);
       }
@@ -179,8 +195,7 @@ class carsController {
       for (const [pos, vehicleData] of Object.entries(vehicles)) {
         if (!vehicleData) continue;
 
-        // trailer schema’da bormi?
-        if (!trailer.vehicles?.[pos]) continue;
+        if (!drive.vehicles?.[pos]) continue;
 
         drive.vehicles[pos].unshift(vehicleData);
         const newVehicleId = drive.vehicles[pos][0]._id;

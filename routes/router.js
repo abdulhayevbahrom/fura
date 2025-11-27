@@ -73,6 +73,9 @@ router.put(
 );
 router.put("/drivers/status/:id", drivesController.changeStatus);
 
+// PERMISSIONS
+router.put("/drivers/permissions/:id", drivesController.updatePermissions);
+
 // ORDERS
 const orderController = require("../controller/orderController");
 const orderValidation = require("../validation/orderValidation");
@@ -101,6 +104,7 @@ router.get("/parts/all", partController.getParts);
 router.get("/parts/:id", partController.getPartById);
 router.get("/parts/driver/:id", partController.getPartsByDriverId);
 router.put("/parts/status/:part_id", partController.changeStatus);
+router.put("/parts/update/:id", partController.updatePart);
 
 // EXPENSES
 const expensesController = require("../controller/expensesController");
@@ -167,6 +171,7 @@ router.put("/license/edit/:id", licenseController.edit);
 // FUEL
 const fuelController = require("../controller/fuelController");
 router.get("/fuel/all", fuelController.getFuels);
+router.get("/fuel/car/:id", fuelController.getByCarId);
 router.post("/fuel/create", fuelController.create);
 router.delete("/fuel/delete/:id", fuelController.delete);
 router.put("/fuel/update/:id", fuelController.update);

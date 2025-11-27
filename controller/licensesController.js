@@ -5,8 +5,7 @@ const mongoose = require("mongoose");
 class LicenseController {
   async getAll(req, res) {
     try {
-      //   const licenses = await License.find({ status: true, deleted: false })
-      const licenses = await License.find()
+      const licenses = await License.find({ status: true, deleted: false })
         .populate("car_id", "title number")
         .populate("trailer_id", "number");
       if (!licenses.length)

@@ -4,7 +4,10 @@ const Fuel = require("../model/fuelModel");
 class FuelController {
   async getFuels(req, res) {
     try {
-      const fuels = await Fuel.find();
+      const fuels = await Fuel.find({ deleted: false }).populate(
+        "car_id",
+        "title number"
+      );
       if (!fuels.length) return response.notFound(res, "Fuels topilmadi");
       return response.success(res, "Fuels", fuels);
     } catch (error) {
@@ -14,8 +17,8 @@ class FuelController {
 
   async create(req, res) {
     try {
-      let { name, from, to } = req.body;
-      if (!name || !from || !to) {
+      let { name, from, to, car_id } = req.body;
+      if (!name || !from || !to || !car_id) {
         return response.error(res, "Malumotlar to'liq emas");
       }
       const newFuel = await Fuel.create(req.body);
@@ -46,6 +49,17 @@ class FuelController {
       });
       if (!fuel) return response.notFound(res, "Fuel topilmadi");
       return response.success(res, "Muvaffaqiyatli o'chirildi", fuel);
+    } catch (error) {
+      return response.serverError(res, error.message, error);
+    }
+  }
+
+  // get by car
+  async getByCarId(req, res) {
+    try {
+      const fuels = await Fuel.find({ car_id: req.params.id, deleted: false });
+      if (!fuels.length) return response.notFound(res, "Fuels topilmadi");
+      return response.success(res, "Fuels", fuels);
     } catch (error) {
       return response.serverError(res, error.message, error);
     }

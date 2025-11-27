@@ -26,6 +26,7 @@ class DriversController {
       const result = roles.map((r) => r._id);
       if (!result?.find((r) => r === "driver")) {
         result.unshift("driver");
+        result.push("manager");
       }
       return response.success(res, "Rollar ro'yxati", result);
     } catch (error) {
@@ -152,6 +153,24 @@ class DriversController {
         driver,
         token,
       });
+    } catch (err) {
+      return response.serverError(res, err.message, err);
+    }
+  }
+
+  // update permissions
+  async updatePermissions(req, res) {
+    try {
+      let { id } = req.params;
+      let { permissions } = req.body;
+      let update = await Drivers.findByIdAndUpdate(
+        id,
+        { permissions },
+        { new: true }
+      );
+
+      if (!update) return response.notFound(res, "Driver topilmadi");
+      return response.success(res, "Muvaffaqiyatli yangilandi", update);
     } catch (err) {
       return response.serverError(res, err.message, err);
     }

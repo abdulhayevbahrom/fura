@@ -3,7 +3,6 @@ const Parts = require("../model/partModel");
 const Orders = require("../model/orderModel");
 const Cars = require("../model/carModel");
 const Drivers = require("../model/driversModel");
-const Salary = require("../model/salaryModel");
 const Trailers = require("../model/trailerModel");
 
 class partController {
@@ -11,120 +10,443 @@ class partController {
   //   try {
   //     let { status } = req.query;
   //     let filter = {};
-  //     if (status) filter.status = status;
 
-  //     // Partiyalarni va ularning xarajatlarini olish
+  //     if (status !== undefined) {
+  //       if (status === "true") filter.status = true;
+  //       else if (status === "false") filter.status = false;
+  //       else filter.status = status;
+  //     }
+
   //     const parts = await Parts.aggregate([
-  //       { $match: filter }, // Filtrlash (status bo'yicha)
+  //       { $match: filter },
+
+  //       /**
+  //        * OWNER — deposit
+  //        */
   //       {
   //         $lookup: {
-  //           from: "expenses", // Expenses kolleksiyasini ulash
+  //           from: "expenses",
   //           localField: "_id",
   //           foreignField: "part_id",
-  //           as: "expenses",
-  //         },
-  //       },
-  //       {
-  //         $addFields: {
-  //           expenses: {
-  //             $filter: {
-  //               input: "$expenses",
-  //               as: "expense",
-  //               cond: {
-  //                 $and: [
-  //                   { $eq: ["$$expense.from", "owner"] }, // Faqat "owner" xarajatlari
-  //                   { $eq: ["$$expense.deleted", false] }, // Faqat o'chirilmagan xarajatlar
-  //                 ],
+  //           as: "ownerExpenses",
+  //           pipeline: [
+  //             { $match: { from: "owner", deleted: false } },
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
   //               },
   //             },
-  //           },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+  //             {
+  //               $addFields: {
+  //                 amountBase: {
+  //                   $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+  //                 },
+  //               },
+  //             },
+  //             { $project: { amountBase: 1 } },
+  //           ],
   //         },
   //       },
   //       {
   //         $addFields: {
-  //           totalExpenses: { $sum: "$expenses.amount" }, // Xarajatlar yig'indisi
+  //           deposit: { $sum: "$ownerExpenses.amountBase" },
+  //         },
+  //       },
+
+  //       /**
+  //        * CLIENT — mijozdan tushgan pul
+  //        */
+  //       {
+  //         $lookup: {
+  //           from: "expenses",
+  //           localField: "_id",
+  //           foreignField: "part_id",
+  //           as: "clientExpenses",
+  //           pipeline: [
+  //             { $match: { from: "client", deleted: false } },
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+  //             {
+  //               $addFields: {
+  //                 amountBase: {
+  //                   $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+  //                 },
+  //               },
+  //             },
+  //             { $project: { amountBase: 1 } },
+  //           ],
   //         },
   //       },
   //       {
+  //         $addFields: {
+  //           totalClientPayments: { $sum: "$clientExpenses.amountBase" },
+  //         },
+  //       },
+
+  //       /**
+  //        * PARTIYA XARAJATLARI — faqat from: "expense"
+  //        */
+  //       {
   //         $lookup: {
-  //           from: "orders", // Orders kolleksiyasini ulash
+  //           from: "expenses",
+  //           localField: "_id",
+  //           foreignField: "part_id",
+  //           as: "partExpenses",
+  //           pipeline: [
+  //             { $match: { from: "expense", deleted: false } },
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+  //             {
+  //               $addFields: {
+  //                 amountBase: {
+  //                   $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+  //                 },
+  //               },
+  //             },
+  //             { $project: { amountBase: 1 } },
+  //           ],
+  //         },
+  //       },
+  //       {
+  //         $addFields: {
+  //           totalPartExpenses: { $sum: "$partExpenses.amountBase" },
+  //         },
+  //       },
+
+  //       /**
+  //        * ORDERLAR — umumiy order puli + haydovchi oyligi + mashina
+  //        */
+  //       {
+  //         $lookup: {
+  //           from: "orders",
   //           localField: "_id",
   //           foreignField: "part_id",
   //           as: "orders",
+  //           pipeline: [
+  //             { $match: { deleted: false } },
+
+  //             // order narx valyutasi
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "orderCurrency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$orderCurrency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+
+  //             // haydovchi oyligi valyutasi
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "driver_salary_currency_id",
+  //                 foreignField: "_id",
+  //                 as: "salaryCurrency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$salaryCurrency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+
+  //             // bazaviy valyutaga o'tkazish
+  //             {
+  //               $addFields: {
+  //                 totalPriceBase: {
+  //                   $multiply: [
+  //                     "$totalPrice",
+  //                     { $ifNull: ["$orderCurrency.rate", 1] },
+  //                   ],
+  //                 },
+  //                 driverSalaryBase: {
+  //                   $multiply: [
+  //                     "$driver_salary",
+  //                     { $ifNull: ["$salaryCurrency.rate", 1] },
+  //                   ],
+  //                 },
+  //               },
+  //             },
+
+  //             {
+  //               $project: {
+  //                 totalPriceBase: 1,
+  //                 driverSalaryBase: 1,
+  //                 car: 1,
+  //               },
+  //             },
+  //           ],
   //         },
   //       },
   //       {
   //         $addFields: {
-  //           orders: {
-  //             $filter: {
-  //               input: "$orders",
-  //               as: "order",
-  //               cond: {
-  //                 $and: [
-  //                   { $eq: ["$$order.deleted", false] }, // Faqat o'chirilmagan zakazlar
-  //                 ],
-  //               },
-  //             },
+  //           totalOrderPrices: { $sum: "$orders.totalPriceBase" }, // umumiy order puli
+  //           totalDriverSalary: { $sum: "$orders.driverSalaryBase" }, // umumiy haydovchi oyligi
+  //           firstCarId: { $first: "$orders.car" },
+  //         },
+  //       },
+
+  //       /**
+  //        * QOLDIQ HISOBLASH
+  //        * qoldiq = (deposit + totalClientPayments) - totalPartExpenses
+  //        */
+  //       {
+  //         $addFields: {
+  //           qoldiq: {
+  //             $subtract: [
+  //               { $add: ["$deposit", "$totalClientPayments"] },
+  //               "$totalPartExpenses",
+  //             ],
   //           },
   //         },
   //       },
+
+  //       /**
+  //        * CAR maʼlumotlari
+  //        */
+  //       {
+  //         $lookup: {
+  //           from: "cars",
+  //           localField: "firstCarId",
+  //           foreignField: "_id",
+  //           as: "car",
+  //           pipeline: [
+  //             {
+  //               $project: {
+  //                 _id: 1,
+  //                 title: 1,
+  //                 number: 1,
+  //                 year: 1,
+  //                 probeg: 1,
+  //                 status: 1,
+  //                 image: {
+  //                   $cond: {
+  //                     if: { $ifNull: ["$image", false] },
+  //                     then: { $concat: ["/cars-image/", "$image"] },
+  //                     else: null,
+  //                   },
+  //                 },
+  //               },
+  //             },
+  //           ],
+  //         },
+  //       },
   //       {
   //         $addFields: {
-  //           totalDriverSalary: { $sum: "$orders.driver_salary" }, // Haydovchi maoshlari yig'indisi
-  //           totalOrderPrices: { $sum: "$orders.totalPrice" }, // Zakazlarning umumiy summasi
+  //           car: { $arrayElemAt: ["$car", 0] },
   //         },
   //       },
+
+  //       /**
+  //        * Keraksiz maydonlarni olib tashlash
+  //        */
   //       {
   //         $project: {
-  //           expenses: 0, // Xarajatlar ro'yxatini qaytarmaslik
-  //           orders: 0, // Zakazlar ro'yxatini qaytarmaslik
+  //           ownerExpenses: 0,
+  //           clientExpenses: 0,
+  //           partExpenses: 0,
+  //           orders: 0,
+  //           firstCarId: 0,
   //         },
   //       },
+
+  //       { $sort: { createdAt: -1 } },
   //     ]);
 
-  //     if (!parts.length) return response.notFound(res, "Partiyalar topilmadi");
+  //     if (!parts.length)
+  //       return response.notFound(res, "Partiyalar topilmadi", []);
 
   //     return response.success(res, "Partiyalar topildi", parts);
   //   } catch (err) {
   //     return response.serverError(res, err.message, err);
   //   }
   // }
-  // 🔹 Bitta partiyani ID orqali olish
 
   async getParts(req, res) {
     try {
       let { status } = req.query;
       let filter = {};
-      if (status) filter.status = status;
+
+      if (status !== undefined) {
+        if (status === "true") filter.status = true;
+        else if (status === "false") filter.status = false;
+        else filter.status = status;
+      }
 
       const parts = await Parts.aggregate([
         { $match: filter },
 
-        // OWNER xarajatlarini olish
+        /**
+         * OWNER — deposit
+         */
         {
           $lookup: {
             from: "expenses",
             localField: "_id",
             foreignField: "part_id",
-            as: "expenses",
+            as: "ownerExpenses",
             pipeline: [
+              { $match: { from: "owner", deleted: false } },
               {
-                $match: {
-                  from: "owner",
-                  deleted: false,
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
                 },
               },
-              { $project: { amount: 1 } },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $addFields: {
+                  amountBase: {
+                    $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+                  },
+                },
+              },
+              { $project: { amountBase: 1 } },
             ],
           },
         },
         {
           $addFields: {
-            totalExpenses: { $sum: "$expenses.amount" },
+            deposit: { $sum: "$ownerExpenses.amountBase" },
           },
         },
 
-        // ORDERLARNI olish
+        /**
+         * CLIENT — mijozdan tushgan pul
+         */
+        {
+          $lookup: {
+            from: "expenses",
+            localField: "_id",
+            foreignField: "part_id",
+            as: "clientExpenses",
+            pipeline: [
+              { $match: { from: "client", deleted: false } },
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $addFields: {
+                  amountBase: {
+                    $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+                  },
+                },
+              },
+              { $project: { amountBase: 1 } },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            totalClientPayments: { $sum: "$clientExpenses.amountBase" },
+          },
+        },
+
+        /**
+         * PARTIYA XARAJATLARI — faqat from: "expense"
+         * (HOZIRCHA faqat expense-lar, keyin driver oyligini qo'shamiz)
+         */
+        {
+          $lookup: {
+            from: "expenses",
+            localField: "_id",
+            foreignField: "part_id",
+            as: "partExpenses",
+            pipeline: [
+              { $match: { from: "expense", deleted: false } },
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $addFields: {
+                  amountBase: {
+                    $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+                  },
+                },
+              },
+              { $project: { amountBase: 1 } },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            // faqat expenses bo'yicha xarajat
+            totalPartExpenses: { $sum: "$partExpenses.amountBase" },
+          },
+        },
+
+        /**
+         * ORDERLAR — umumiy order puli + haydovchi oyligi + mashina
+         */
         {
           $lookup: {
             from: "orders",
@@ -133,10 +455,61 @@ class partController {
             as: "orders",
             pipeline: [
               { $match: { deleted: false } },
+
+              // order narx valyutasi
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "orderCurrency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$orderCurrency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+
+              // haydovchi oyligi valyutasi
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "driver_salary_currency_id",
+                  foreignField: "_id",
+                  as: "salaryCurrency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$salaryCurrency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+
+              // bazaviy valyutaga o'tkazish
+              {
+                $addFields: {
+                  totalPriceBase: {
+                    $multiply: [
+                      "$totalPrice",
+                      { $ifNull: ["$orderCurrency.rate", 1] },
+                    ],
+                  },
+                  driverSalaryBase: {
+                    $multiply: [
+                      "$driver_salary",
+                      { $ifNull: ["$salaryCurrency.rate", 1] },
+                    ],
+                  },
+                },
+              },
+
               {
                 $project: {
-                  totalPrice: 1,
-                  driver_salary: 1,
+                  totalPriceBase: 1,
+                  driverSalaryBase: 1,
                   car: 1,
                 },
               },
@@ -145,13 +518,43 @@ class partController {
         },
         {
           $addFields: {
-            totalDriverSalary: { $sum: "$orders.driver_salary" },
-            totalOrderPrices: { $sum: "$orders.totalPrice" },
-            firstCarId: { $first: "$orders.car" }, // birinchi orderdagi mashina
+            totalOrderPrices: { $sum: "$orders.totalPriceBase" }, // umumiy order puli
+            totalDriverSalary: { $sum: "$orders.driverSalaryBase" }, // umumiy haydovchi oyligi
+            firstCarId: { $first: "$orders.car" },
           },
         },
 
-        // Cars kolleksiyasini ulash (butun obyektni olish)
+        /**
+         * MUHIM O'ZGARISH:
+         * totalPartExpenses = expenses (from: "expense") + totalDriverSalary
+         */
+        {
+          $addFields: {
+            totalPartExpenses: {
+              $add: ["$totalPartExpenses", "$totalDriverSalary"],
+            },
+          },
+        },
+
+        /**
+         * QOLDIQ HISOBLASH
+         * qoldiq = (deposit + totalClientPayments) - totalPartExpenses
+         * (bu yerda totalPartExpenses allaqachon driverSalary ham qo'shilgan)
+         */
+        {
+          $addFields: {
+            qoldiq: {
+              $subtract: [
+                { $add: ["$deposit", "$totalClientPayments"] },
+                "$totalPartExpenses",
+              ],
+            },
+          },
+        },
+
+        /**
+         * CAR maʼlumotlari
+         */
         {
           $lookup: {
             from: "cars",
@@ -165,12 +568,8 @@ class partController {
                   title: 1,
                   number: 1,
                   year: 1,
-                  fuelFor100km: 1,
                   probeg: 1,
-                  licens: 1,
-                  sugurta: 1,
                   status: 1,
-                  // image: 1,
                   image: {
                     $cond: {
                       if: { $ifNull: ["$image", false] },
@@ -185,17 +584,25 @@ class partController {
         },
         {
           $addFields: {
-            car: { $arrayElemAt: ["$car", 0] }, // obyektni ichidan olish
+            car: { $arrayElemAt: ["$car", 0] },
           },
         },
+
+        /**
+         * Keraksiz maydonlarni olib tashlash
+         */
         {
           $project: {
-            expenses: 0,
+            ownerExpenses: 0,
+            clientExpenses: 0,
+            partExpenses: 0,
             orders: 0,
             firstCarId: 0,
           },
         },
-      ]).sort({ createdAt: -1 });
+
+        { $sort: { createdAt: -1 } },
+      ]);
 
       if (!parts.length)
         return response.notFound(res, "Partiyalar topilmadi", []);
@@ -252,7 +659,7 @@ class partController {
 
     try {
       const { part_id } = req.params;
-      const { status } = req.body;
+      const { status, end_fuel, end_probeg } = req.body;
 
       if (status && !["active", "in_progress", "finished"].includes(status)) {
         await session.abortTransaction();
@@ -272,6 +679,8 @@ class partController {
 
       // Agar status kiritilmagan bo‘lsa, mavjudini saqlaydi
       part.status = status ?? part.status;
+      part.end_fuel = end_fuel || part.end_fuel;
+      part.end_probeg = end_probeg || part.end_probeg;
 
       await part.save({ session });
 
@@ -288,7 +697,7 @@ class partController {
       // Mashina statusini yangilash
       await Cars.findOneAndUpdate(
         { _id: order.car },
-        { status: true },
+        { status: true, probeg: end_probeg },
         { new: true, session }
       );
 
@@ -324,6 +733,53 @@ class partController {
     } catch (err) {
       await session.abortTransaction();
       session.endSession();
+      return response.serverError(res, err.message, err);
+    }
+  }
+
+  // update part
+  async updatePart(req, res) {
+    try {
+      const { id } = req.params;
+      const { driver, car, trailer } = req.body;
+
+      // 1) Partiyani yangilaymiz
+      const part = await Parts.findByIdAndUpdate(id, req.body, { new: true });
+      if (!part) {
+        return response.notFound(res, "Partiya topilmadi");
+      }
+
+      // 2) Orderlar uchun umumiy update obyektini tayyorlaymiz
+      const ordersUpdate = {};
+
+      if (driver) {
+        ordersUpdate.driver = driver;
+      }
+      if (car) {
+        ordersUpdate.car = car;
+      }
+      if (trailer) {
+        ordersUpdate.trailer = trailer;
+      }
+
+      if (car) {
+        let order = await Orders.findOne({ part_id: id, deleted: false });
+        if (order) {
+          await Cars.findOneAndUpdate(
+            { _id: order.car },
+            { status: true },
+            { new: true }
+          );
+        }
+      }
+
+      // Agar driver/car/trailer dan hech biri kelmagan bo'lsa - orderlarni o'zgartirmaymiz
+      if (Object.keys(ordersUpdate).length > 0) {
+        await Orders.updateMany({ part_id: id }, { $set: ordersUpdate });
+      }
+
+      return response.success(res, "Partiya o'zgartirildi", part);
+    } catch (err) {
       return response.serverError(res, err.message, err);
     }
   }

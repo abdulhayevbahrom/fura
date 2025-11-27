@@ -8,6 +8,11 @@ const partSchema = new Schema(
       default: "active",
       enum: ["active", "in_progress", "finished"],
     },
+    avarage_fuel: { type: Number, default: 0 }, // for 100 km
+    start_probeg: { type: Number, default: 0 },
+    end_probeg: { type: Number, default: 0 },
+    start_fuel: { type: Number, default: 0 },
+    end_fuel: { type: Number, default: 0 },
     driver: { type: Schema.Types.ObjectId, ref: "drivers", default: null },
   },
   {

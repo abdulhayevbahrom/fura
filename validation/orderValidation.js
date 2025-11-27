@@ -85,7 +85,7 @@ const orderValidation = (req, res, next) => {
       "totalPrice",
     ],
 
-    additionalProperties: false,
+    additionalProperties: true,
 
     errorMessage: {
       required: {

@@ -58,7 +58,7 @@ const orderValidationByPartId = (req, res, next) => {
 
     required: ["partner", "title", "weight", "from", "to"],
 
-    additionalProperties: false,
+    additionalProperties: true,
 
     errorMessage: {
       required: {

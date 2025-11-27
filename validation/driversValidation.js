@@ -24,6 +24,7 @@ const driversValidation = (req, res, next) => {
         default: "driver",
       },
       salary: { type: "number", default: 0 },
+      currency_id: { type: "string" },
     },
     required: ["firstName", "lastName", "phone", "address", "role"],
     additionalProperties: false,
