@@ -13,6 +13,9 @@ const partSchema = new Schema(
     end_probeg: { type: Number, default: 0 },
     start_fuel: { type: Number, default: 0 },
     end_fuel: { type: Number, default: 0 },
+    totalFuel: { type: Number, default: 0 },
+    distance: { type: Number, default: 0 },
+    totalFuelAvailable: { type: Number, default: 0 },
     driver: { type: Schema.Types.ObjectId, ref: "drivers", default: null },
   },
   {

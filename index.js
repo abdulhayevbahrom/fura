@@ -5,6 +5,7 @@ const connectDB = require("./config/dbConfig"); // yoki ./utils/connect
 const cors = require("cors");
 const mongoose = require("mongoose"); // ⬅️ qo‘shamiz
 const applyTimezone = require("./model/mongoose-timezone"); // ⬅️ pluginni chaqiramiz
+const licenceCron = require("./controller/licenceCron");
 
 const PORT = process.env.PORT || 8040;
 const notfound = require("./middleware/notfound.middleware");
@@ -40,6 +41,7 @@ mongoose.plugin(applyTimezone);
 // Socket.IO sozlamalari
 app.set("socket", io);
 soket.connect(io);
+licenceCron(io);
 
 const trainingPath = path.join(__dirname, "./uploads");
 app.use("/cars-image", express.static(trainingPath));

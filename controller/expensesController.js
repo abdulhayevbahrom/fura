@@ -1,6 +1,7 @@
 const response = require("../utils/response");
 const Expense = require("../model/expensesModel");
 const Order = require("../model/orderModel");
+const mongoose = require("mongoose");
 
 class ExpensesController {
   // async getAll(req, res) {
@@ -150,20 +151,165 @@ class ExpensesController {
   }
 
   // get by order id
+  // async getByOrderId(req, res) {
+  //   try {
+  //     const { orderId } = req.params;
+  //     const expenses = await Expense.find({
+  //       order_id: orderId,
+  //       deleted: false,
+  //     })
+  //       .populate("car", "title number")
+  //       .populate("trailer", "number")
+  //       .populate("order_id")
+  //       .populate("part_id");
+  //     if (!expenses.length) {
+  //       return response.notFound(res, "Xarajatlar topilmadi", []);
+  //     }
+  //     return response.success(res, "Xarajatlar ro'yxati", expenses);
+  //   } catch (error) {
+  //     return response.error(res, error.message, error);
+  //   }
+  // }
+
   async getByOrderId(req, res) {
     try {
       const { orderId } = req.params;
-      const expenses = await Expense.find({
-        order_id: orderId,
-        deleted: false,
-      })
-        .populate("car", "title number")
-        .populate("trailer", "number")
-        .populate("order_id")
-        .populate("part_id");
+
+      // orderId to'g'riligini tekshiramiz
+      if (!mongoose.Types.ObjectId.isValid(orderId)) {
+        return response.error(res, "Noto'g'ri orderId");
+      }
+
+      const orderObjectId = new mongoose.Types.ObjectId(orderId);
+
+      const expenses = await Expense.aggregate([
+        {
+          $match: {
+            order_id: orderObjectId,
+            deleted: false,
+          },
+        },
+
+        // CURRENCY ulash va amountBase hisoblash
+        {
+          $lookup: {
+            from: "currencies", // model("currency") => "currencies"
+            localField: "currency_id",
+            foreignField: "_id",
+            as: "currency",
+          },
+        },
+        {
+          $unwind: {
+            path: "$currency",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            currencyRate: { $ifNull: ["$currency.rate", 1] },
+            currencyName: "$currency.name",
+            amountBase: {
+              $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+            },
+          },
+        },
+
+        // CAR ulash
+        {
+          $lookup: {
+            from: "cars",
+            localField: "car",
+            foreignField: "_id",
+            as: "car",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  number: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$car",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        // TRAILER ulash
+        {
+          $lookup: {
+            from: "trailers",
+            localField: "trailer",
+            foreignField: "_id",
+            as: "trailer",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  number: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$trailer",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        // ORDER ulash
+        {
+          $lookup: {
+            from: "orders",
+            localField: "order_id",
+            foreignField: "_id",
+            as: "order",
+          },
+        },
+        {
+          $unwind: {
+            path: "$order",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        // PART ulash
+        {
+          $lookup: {
+            from: "parts",
+            localField: "part_id",
+            foreignField: "_id",
+            as: "part",
+          },
+        },
+        {
+          $unwind: {
+            path: "$part",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        // keraksiz ichki obyektlarni olib tashlash
+        {
+          $project: {
+            currency: 0,
+          },
+        },
+
+        { $sort: { createdAt: -1 } },
+      ]);
+
       if (!expenses.length) {
         return response.notFound(res, "Xarajatlar topilmadi", []);
       }
+
       return response.success(res, "Xarajatlar ro'yxati", expenses);
     } catch (error) {
       return response.error(res, error.message, error);

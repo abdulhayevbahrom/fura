@@ -5,6 +5,8 @@ const Cars = require("../model/carModel");
 const Drivers = require("../model/driversModel");
 const Trailers = require("../model/trailerModel");
 
+const Expense = require("../model/expensesModel");
+
 class partController {
   // async getParts(req, res) {
   //   try {
@@ -106,6 +108,7 @@ class partController {
 
   //       /**
   //        * PARTIYA XARAJATLARI — faqat from: "expense"
+  //        * (HOZIRCHA faqat expense-lar, keyin driver oyligini qo'shamiz)
   //        */
   //       {
   //         $lookup: {
@@ -142,6 +145,7 @@ class partController {
   //       },
   //       {
   //         $addFields: {
+  //           // faqat expenses bo'yicha xarajat
   //           totalPartExpenses: { $sum: "$partExpenses.amountBase" },
   //         },
   //       },
@@ -227,8 +231,21 @@ class partController {
   //       },
 
   //       /**
+  //        * MUHIM O'ZGARISH:
+  //        * totalPartExpenses = expenses (from: "expense") + totalDriverSalary
+  //        */
+  //       {
+  //         $addFields: {
+  //           totalPartExpenses: {
+  //             $add: ["$totalPartExpenses", "$totalDriverSalary"],
+  //           },
+  //         },
+  //       },
+
+  //       /**
   //        * QOLDIQ HISOBLASH
   //        * qoldiq = (deposit + totalClientPayments) - totalPartExpenses
+  //        * (bu yerda totalPartExpenses allaqachon driverSalary ham qo'shilgan)
   //        */
   //       {
   //         $addFields: {
@@ -278,6 +295,33 @@ class partController {
   //       },
 
   //       /**
+  //        * DRIVER maʼlumotlari
+  //        * Part ichidagi driver_id'ni populate qilamiz
+  //        */
+  //       {
+  //         $lookup: {
+  //           from: "drivers",
+  //           localField: "driver", // AGAR MAYDON NOMI "driver" BO'LSA, shu yerini "driver" QIL
+  //           foreignField: "_id",
+  //           as: "driver",
+  //           pipeline: [
+  //             {
+  //               $project: {
+  //                 _id: 1,
+  //                 firstName: 1,
+  //                 lastName: 1,
+  //               },
+  //             },
+  //           ],
+  //         },
+  //       },
+  //       {
+  //         $addFields: {
+  //           driver: { $arrayElemAt: ["$driver", 0] },
+  //         },
+  //       },
+
+  //       /**
   //        * Keraksiz maydonlarni olib tashlash
   //        */
   //       {
@@ -301,7 +345,6 @@ class partController {
   //     return response.serverError(res, err.message, err);
   //   }
   // }
-
   async getParts(req, res) {
     try {
       let { status } = req.query;
@@ -445,7 +488,7 @@ class partController {
         },
 
         /**
-         * ORDERLAR — umumiy order puli + haydovchi oyligi + mashina
+         * ORDERLAR — umumiy order puli + haydovchi oyligi + mashina + tirkama
          */
         {
           $lookup: {
@@ -511,6 +554,7 @@ class partController {
                   totalPriceBase: 1,
                   driverSalaryBase: 1,
                   car: 1,
+                  trailer: 1, // ORDER ichidagi trailer_id
                 },
               },
             ],
@@ -521,6 +565,7 @@ class partController {
             totalOrderPrices: { $sum: "$orders.totalPriceBase" }, // umumiy order puli
             totalDriverSalary: { $sum: "$orders.driverSalaryBase" }, // umumiy haydovchi oyligi
             firstCarId: { $first: "$orders.car" },
+            firstTrailerId: { $first: "$orders.trailer" }, // birinchi order'dagi trailer
           },
         },
 
@@ -589,6 +634,60 @@ class partController {
         },
 
         /**
+         * TRAILER maʼlumotlari
+         */
+        {
+          $lookup: {
+            from: "trailers",
+            localField: "firstTrailerId",
+            foreignField: "_id",
+            as: "trailer",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  number: 1,
+                  // kerak bo'lsa qo'shimcha fieldlar qo'shishing mumkin
+                },
+              },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            trailer: { $arrayElemAt: ["$trailer", 0] },
+          },
+        },
+
+        /**
+         * DRIVER maʼlumotlari
+         * Part ichidagi driver_id'ni populate qilamiz
+         */
+        {
+          $lookup: {
+            from: "drivers",
+            localField: "driver", // Part modelidagi haydovchi field nomi
+            foreignField: "_id",
+            as: "driver",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  firstName: 1,
+                  lastName: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            driver: { $arrayElemAt: ["$driver", 0] },
+          },
+        },
+
+        /**
          * Keraksiz maydonlarni olib tashlash
          */
         {
@@ -598,6 +697,7 @@ class partController {
             partExpenses: 0,
             orders: 0,
             firstCarId: 0,
+            firstTrailerId: 0,
           },
         },
 
@@ -652,14 +752,99 @@ class partController {
     }
   }
 
-  // 🔹 Partiya statusini o‘zgartirish
+  // // 🔹 Partiya statusini o‘zgartirish
+  // async changeStatus(req, res) {
+  //   const session = await Parts.startSession();
+  //   session.startTransaction();
+
+  //   try {
+  //     const { part_id } = req.params;
+  //     const { status,  end_probeg } = req.body;
+
+  //     if (status && !["active", "in_progress", "finished"].includes(status)) {
+  //       await session.abortTransaction();
+  //       session.endSession();
+  //       return response.error(
+  //         res,
+  //         "Noto'g'ri status qiymati yuborildi, to'g'ri qiymatlar: active, in_progress, finished"
+  //       );
+  //     }
+
+  //     const part = await Parts.findById(part_id).session(session);
+  //     if (!part) {
+  //       await session.abortTransaction();
+  //       session.endSession();
+  //       return response.notFound(res, "Partiya topilmadi");
+  //     }
+
+  //     // Agar status kiritilmagan bo‘lsa, mavjudini saqlaydi
+  //     part.status = status ?? part.status;
+  //     part.end_probeg = end_probeg || part.end_probeg;
+  //     part.end_fuel =0; // shu yerga qoldiq yoqilgi ;
+  //     part.totalFuel =0; // shu yerga sarflanishi kerak bolgan yoqilgi;
+
+  //     await part.save({ session });
+
+  //     const order = await Orders.findOne({
+  //       part_id: part_id,
+  //       deleted: false,
+  //     }).session(session);
+  //     if (!order) {
+  //       await session.abortTransaction();
+  //       session.endSession();
+  //       return response.notFound(res, "Partiyaga tegishli zakaz topilmadi");
+  //     }
+
+  //     // Mashina statusini yangilash
+  //     await Cars.findOneAndUpdate(
+  //       { _id: order.car },
+  //       { status: true, probeg: end_probeg },
+  //       { new: true, session }
+  //     );
+
+  //     // Trailer statusini yangilash
+  //     await Trailers.findOneAndUpdate(
+  //       { _id: order.trailer },
+  //       { status: true },
+  //       { new: true, session }
+  //     );
+
+  //     // Haydovchi statusini yangilash
+  //     await Drivers.findOneAndUpdate(
+  //       { _id: order.driver },
+  //       { is_active: true },
+  //       { new: true, session }
+  //     );
+
+  //     // Partiyaga tegishli orderlarni olish
+  //     const orders = await Orders.find({
+  //       part_id: part_id,
+  //       deleted: false,
+  //       state: "finished",
+  //     });
+
+  //     if (!orders.length) {
+  //       return response.error(res, "Partiyada tugallangan orderlar topilmadi");
+  //     }
+
+  //     await session.commitTransaction();
+  //     session.endSession();
+
+  //     return response.success(res, "Partiya statusi o'zgartirildi", part);
+  //   } catch (err) {
+  //     await session.abortTransaction();
+  //     session.endSession();
+  //     return response.serverError(res, err.message, err);
+  //   }
+  // }
+
   async changeStatus(req, res) {
     const session = await Parts.startSession();
     session.startTransaction();
 
     try {
       const { part_id } = req.params;
-      const { status, end_fuel, end_probeg } = req.body;
+      const { status, end_probeg } = req.body;
 
       if (status && !["active", "in_progress", "finished"].includes(status)) {
         await session.abortTransaction();
@@ -677,10 +862,64 @@ class partController {
         return response.notFound(res, "Partiya topilmadi");
       }
 
-      // Agar status kiritilmagan bo‘lsa, mavjudini saqlaydi
-      part.status = status ?? part.status;
-      part.end_fuel = end_fuel || part.end_fuel;
-      part.end_probeg = end_probeg || part.end_probeg;
+      // Yangi status va probeg
+      const finalStatus = status ?? part.status;
+      const finalEndProbeg = end_probeg ?? part.end_probeg;
+
+      part.status = finalStatus;
+      part.end_probeg = finalEndProbeg;
+
+      /**
+       * YOQILGI HISOBLASH
+       *
+       * distance = end_probeg - start_probeg
+       * requiredFuel = (distance / 100) * average_fuel
+       * totalFuelAvailable = start_fuel + yo'l davomida quyilgan yoqilgi (quantity)
+       * end_fuel = totalFuelAvailable - requiredFuel
+       * totalFuel = requiredFuel
+       */
+
+      const startProbeg = Number(part.start_probeg || 0);
+      const endProbegNum = Number(finalEndProbeg || 0);
+      const avgFuel = Number(part.avarage_fuel || 0);
+      const startFuel = Number(part.start_fuel || 0);
+
+      let endFuel = part.end_fuel || 0;
+      let totalFuel = part.totalFuel || 0;
+
+      // Faqat average_fuel va probeglar bor bo'lsa hisoblaymiz
+      if (avgFuel > 0 && endProbegNum >= startProbeg) {
+        const distance = endProbegNum - startProbeg; // km
+
+        // Sarflanishi kerak bo'lgan yoqilgi (litrlarda)
+        const requiredFuel = (distance / 100) * avgFuel;
+
+        // Yo'l davomida quyilgan yoqilgi (Expense.category = "fuels", type = "order_expense")
+        const fuelExpenses = await Expense.find({
+          part_id,
+          deleted: false,
+          category: "fuels",
+          type: "order_expense",
+        }).session(session);
+
+        const fuelAddedOnRoad = fuelExpenses.reduce((sum, e) => {
+          // quantity ni litr deb olamiz
+          return sum + Number(e.quantity || 0);
+        }, 0);
+
+        const totalFuelAvailable = startFuel + fuelAddedOnRoad;
+
+        endFuel = totalFuelAvailable - requiredFuel;
+        // Xohlasangiz manfiy bo'lmasin desak:
+        // endFuel = Math.max(endFuel, 0);
+
+        totalFuel = requiredFuel;
+
+        part.end_fuel = endFuel;
+        part.totalFuel = totalFuel;
+        part.distance = distance;
+        part.totalFuelAvailable = totalFuelAvailable;
+      }
 
       await part.save({ session });
 
@@ -697,7 +936,7 @@ class partController {
       // Mashina statusini yangilash
       await Cars.findOneAndUpdate(
         { _id: order.car },
-        { status: true, probeg: end_probeg },
+        { status: true, probeg: finalEndProbeg },
         { new: true, session }
       );
 
@@ -715,14 +954,16 @@ class partController {
         { new: true, session }
       );
 
-      // Partiyaga tegishli orderlarni olish
+      // Partiyaga tegishli tugallangan orderlar borligini tekshirish
       const orders = await Orders.find({
         part_id: part_id,
         deleted: false,
         state: "finished",
-      });
+      }).session(session);
 
       if (!orders.length) {
+        await session.abortTransaction();
+        session.endSession();
         return response.error(res, "Partiyada tugallangan orderlar topilmadi");
       }
 

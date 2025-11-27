@@ -159,6 +159,7 @@ router.put("/currency/update/:id", currencyController.update);
 /// License
 const licenseController = require("../controller/licensesController");
 router.get("/license/all", licenseController.getAll);
+router.get("/license/notification", licenseController.getNotification);
 router.get("/license/car/story/:id", licenseController.getByCarIdStory);
 router.get("/license/trailer/story/:id", licenseController.getByTrailerIdStory);
 router.get("/license/car/:id", licenseController.getByCarId);
