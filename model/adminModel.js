@@ -26,6 +26,25 @@ const AdminSchema = new mongoose.Schema(
       default: "admin",
       enum: ["owner", "admin"],
     },
+    permissions: {
+      type: Object,
+      default: {
+        dashboard: true,
+        users: true,
+        cars: true,
+        trailers: true,
+        partners: true,
+        orders: true,
+        expenses: true,
+        salary: true,
+        income: true,
+        carStats: true,
+        newOrders: true,
+        currencies: true,
+        notification: true,
+        map: false,
+      },
+    },
   },
   { timestamps: true }
 );

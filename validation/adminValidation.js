@@ -21,6 +21,10 @@ const adminValidation = (req, res, next) => {
         type: "string",
         enum: ["owner", "admin"],
       },
+      permissions: {
+        type: "object",
+        properties: {},
+      },
     },
     required: ["firstName", "lastName", "login", "password", "role"],
     additionalProperties: false,

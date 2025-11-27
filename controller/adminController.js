@@ -1,5 +1,6 @@
 const response = require("../utils/response");
 const adminsDB = require("../model/adminModel");
+const Drivers = require("../model/driversModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
@@ -31,7 +32,8 @@ class AdminController {
       const { login, password } = req.body;
 
       const existingAdmin = await adminsDB.findOne({ login });
-      if (existingAdmin) {
+      const existingDriver = await Drivers.findOne({ login });
+      if (existingAdmin || existingDriver) {
         return response.error(res, "Bu login allaqachon mavjud");
       }
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -103,19 +105,24 @@ class AdminController {
     try {
       const { login, password } = req.body;
       const admin = await adminsDB.findOne({ login });
-      if (!admin) return response.error(res, "Login yoki parol xato");
+      const driver = await Drivers.findOne({ login });
 
-      const isMatch = await bcrypt.compare(password, admin.password);
+      if (!admin && !driver)
+        return response.error(res, "Login yoki parol xato");
+
+      let employee = admin || driver;
+
+      const isMatch = await bcrypt.compare(password, employee.password);
       if (!isMatch) return response.error(res, "Login yoki parol xato");
 
       const token = jwt.sign(
-        { id: admin._id, login: admin.login },
+        { id: employee._id, login: employee.login },
         process.env.JWT_SECRET_KEY,
         { expiresIn: "1w" }
       );
 
       response.success(res, "Kirish muvaffaqiyatli", {
-        admin,
+        admin: employee,
         token,
       });
     } catch (err) {

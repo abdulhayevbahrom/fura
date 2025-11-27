@@ -40,6 +40,8 @@ const driversSchema = new Schema(
         carStats: false,
         newOrders: false,
         currencies: false,
+        notification: false,
+        map: false,
       },
     },
   },

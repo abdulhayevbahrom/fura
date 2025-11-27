@@ -21,6 +21,8 @@ class OrderController {
         .populate("trailer", "number")
         .populate("partner", "fullname")
         .populate("part_id", "name")
+        .populate("currency_id", "name rate")
+        .populate("driver_salary_currency_id", "name rate")
         .sort({ createdAt: -1 });
 
       if (!orders.length) {

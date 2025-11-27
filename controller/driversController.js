@@ -1,4 +1,5 @@
 const Drivers = require("../model/driversModel");
+const Admins = require("../model/adminModel");
 const response = require("../utils/response");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -52,7 +53,9 @@ class DriversController {
     try {
       if (req.body.login) {
         const driver = await Drivers.findOne({ login: req.body.login });
-        if (driver) return response.error(res, "Bu login allaqachon mavjud");
+        const admin = await Admins.findOne({ login: req.body.login });
+        if (driver || admin)
+          return response.error(res, "Bu login allaqachon mavjud");
       }
 
       if (req.body.password) {
@@ -171,6 +174,23 @@ class DriversController {
 
       if (!update) return response.notFound(res, "Driver topilmadi");
       return response.success(res, "Muvaffaqiyatli yangilandi", update);
+    } catch (err) {
+      return response.serverError(res, err.message, err);
+    }
+  }
+
+  // get permission
+  async getPermissions(req, res) {
+    try {
+      let { id } = req.params;
+      let driver = await Drivers.findById(id).select("permissions");
+      let admins = await Admins.findById(id).select("permissions");
+      if (!driver && !admins) return response.notFound(res, "Driver topilmadi");
+      return response.success(
+        res,
+        "Hodimga ruxsat berilgan qismlar",
+        driver?.permissions || admins?.permissions
+      );
     } catch (err) {
       return response.serverError(res, err.message, err);
     }

@@ -63,6 +63,7 @@ const drivesValidation = require("../validation/driversValidation");
 router.post("/drivers/login", drivesController.login);
 router.get("/drivers/roles", drivesController.getRoles);
 router.get("/drivers/all", drivesController.getDrivers);
+router.get("/driver/permissions/:id", drivesController.getPermissions);
 router.get("/drivers/:id", drivesController.getDriverById);
 router.post("/drivers/create", drivesValidation, drivesController.createDriver);
 router.delete("/drivers/delete/:id", drivesController.deleteDriver);
@@ -117,6 +118,7 @@ router.get("/expenses/order/:orderId", expensesController.getByOrderId);
 
 // ⚙️ 2. CRUD yo‘llar keyin
 router.post("/expenses/create", expenseValidation, expensesController.create);
+router.post("/expenses/create-fuel", expensesController.createFuelExpense);
 router.put(
   "/expenses/update/:id",
   expenseValidation,

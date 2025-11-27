@@ -371,6 +371,34 @@ class ExpensesController {
     }
   }
 
+  // yoqilgi quyish uchun
+  async createFuelExpense(req, res) {
+    try {
+      const { order_id } = req.body;
+      const order = await Order.findOne({
+        _id: order_id,
+        state: { $ne: "finished" },
+        deleted: false,
+      });
+
+      if (!order) {
+        return response.notFound(res, "Buyurtma topilmadi");
+      }
+
+      const newExpense = await Expense.create({
+        ...req.body,
+        order_id,
+        from: "expense",
+        type: "order_expense",
+        category: "fuels",
+        part_id: order?.part_id,
+      });
+      return response.created(res, "Xarajat qo'shildi", newExpense);
+    } catch (error) {
+      return response.error(res, error.message, error);
+    }
+  }
+
   async delete(req, res) {
     try {
       const expense = await Expense.findById(req.params.id);
