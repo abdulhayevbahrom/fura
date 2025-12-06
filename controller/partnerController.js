@@ -26,124 +26,39 @@ class PartnerController {
     }
   }
 
-  async getPartners(req, res) {
-    try {
-      let { startDate, endDate } = req.query;
-
-      // 🗓️ Sana oralig'ini tayyorlash
-      let dateFilter = {};
-      if (startDate && endDate) {
-        dateFilter = {
-          createdAt: {
-            $gte: new Date(startDate),
-            $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)), // kuni tugashigacha
-          },
-        };
-      }
-
-      const results = await Partner.aggregate([
-        // 1️⃣ Faqat o'chirilmagan hamkorlar
-        { $match: { deleted: false } },
-
-        // 2️⃣ Hamkorga tegishli orderlarni biriktirish (sana bilan)
-        {
-          $lookup: {
-            from: "orders",
-            localField: "_id",
-            foreignField: "partner",
-            pipeline: [
-              {
-                $match: {
-                  deleted: false,
-                  ...dateFilter, // ← shu yerda sana oraliqlari qo'llanadi
-                },
-              },
-            ],
-            as: "orders",
-          },
-        },
-
-        // 3️⃣ Order IDlarni ajratib olish
-        {
-          $addFields: {
-            orderIds: "$orders._id",
-          },
-        },
-
-        // 4️⃣ Expenslarni biriktirish (shu orderlarga bog‘lab)
-        {
-          $lookup: {
-            from: "expenses",
-            let: { orderIds: "$orderIds" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $in: ["$order_id", "$$orderIds"] },
-                  from: "client",
-                  deleted: false,
-                },
-              },
-              {
-                $group: {
-                  _id: null,
-                  totalPaid: { $sum: "$amount" },
-                },
-              },
-            ],
-            as: "payments",
-          },
-        },
-
-        // 5️⃣ Hisob-kitoblarni bajarish
-        {
-          $project: {
-            fullname: 1,
-            phone: 1,
-            address: 1,
-            createdAt: 1,
-            updatedAt: 1,
-
-            // 🧮 Jami orderlar soni
-            totalOrderLength: { $size: "$orders" },
-
-            // 💰 Jami narx va to‘lovlar
-            totalPrice: { $sum: "$orders.totalPrice" },
-            paidAmount: {
-              $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0],
-            },
-            debt: {
-              $subtract: [
-                { $sum: "$orders.totalPrice" },
-                { $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0] },
-              ],
-            },
-          },
-        },
-      ]).sort({ createdAt: -1 });
-
-      if (!results.length) {
-        return response.notFound(res, "Hamkorlar topilmadi");
-      }
-
-      return response.success(res, "Hamkorlar va qarzlar ro'yxati", results);
-    } catch (err) {
-      return response.serverError(res, err.message, err);
-    }
-  }
-
   // async getPartners(req, res) {
   //   try {
+  //     let { startDate, endDate } = req.query;
+
+  //     // 🗓️ Sana oralig'ini tayyorlash
+  //     let dateFilter = {};
+  //     if (startDate && endDate) {
+  //       dateFilter = {
+  //         createdAt: {
+  //           $gte: new Date(startDate),
+  //           $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)), // kuni tugashigacha
+  //         },
+  //       };
+  //     }
+
   //     const results = await Partner.aggregate([
   //       // 1️⃣ Faqat o'chirilmagan hamkorlar
   //       { $match: { deleted: false } },
 
-  //       // 2️⃣ Hamkorga tegishli orderlarni biriktirish
+  //       // 2️⃣ Hamkorga tegishli orderlarni biriktirish (sana bilan)
   //       {
   //         $lookup: {
   //           from: "orders",
   //           localField: "_id",
   //           foreignField: "partner",
-  //           pipeline: [{ $match: { deleted: false } }],
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 deleted: false,
+  //                 ...dateFilter, // ← shu yerda sana oraliqlari qo'llanadi
+  //               },
+  //             },
+  //           ],
   //           as: "orders",
   //         },
   //       },
@@ -155,7 +70,7 @@ class PartnerController {
   //         },
   //       },
 
-  //       // 4️⃣ Expenslarni biriktirish
+  //       // 4️⃣ Expenslarni biriktirish (shu orderlarga bog‘lab)
   //       {
   //         $lookup: {
   //           from: "expenses",
@@ -187,10 +102,12 @@ class PartnerController {
   //           address: 1,
   //           createdAt: 1,
   //           updatedAt: 1,
-  //           // Hamkorning barcha fieldlari (kerakli bo'lganlarini qo'shing)
-  //           totalPrice: {
-  //             $sum: "$orders.totalPrice",
-  //           },
+
+  //           // 🧮 Jami orderlar soni
+  //           totalOrderLength: { $size: "$orders" },
+
+  //           // 💰 Jami narx va to‘lovlar
+  //           totalPrice: { $sum: "$orders.totalPrice" },
   //           paidAmount: {
   //             $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0],
   //           },
@@ -214,6 +131,375 @@ class PartnerController {
   //   }
   // }
 
+  // async getPartners(req, res) {
+  //   try {
+  //     let { startDate, endDate } = req.query;
+
+  //     // 🗓️ Sana oralig'ini tayyorlash
+  //     let dateFilter = {};
+  //     if (startDate && endDate) {
+  //       dateFilter = {
+  //         createdAt: {
+  //           $gte: new Date(startDate),
+  //           $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)), // kuni tugashigacha
+  //         },
+  //       };
+  //     }
+
+  //     const results = await Partner.aggregate([
+  //       // 1️⃣ Faqat o'chirilmagan hamkorlar
+  //       { $match: { deleted: false } },
+
+  //       // 2️⃣ Hamkorga tegishli orderlarni biriktirish (sana + currency bilan)
+  //       {
+  //         $lookup: {
+  //           from: "orders",
+  //           localField: "_id",
+  //           foreignField: "partner",
+  //           as: "orders",
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 deleted: false,
+  //                 ...dateFilter, // ← shu yerda sana oraliqlari qo'llanadi
+  //               },
+  //             },
+  //             // order valyutasini olish
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+  //             // totalPrice ni bazaviy valyutaga o'tkazish
+  //             {
+  //               $addFields: {
+  //                 totalPriceBase: {
+  //                   $multiply: [
+  //                     "$totalPrice",
+  //                     { $ifNull: ["$currency.rate", 1] },
+  //                   ],
+  //                 },
+  //               },
+  //             },
+  //             {
+  //               $project: {
+  //                 totalPrice: 1,
+  //                 totalPriceBase: 1,
+  //                 createdAt: 1,
+  //               },
+  //             },
+  //           ],
+  //         },
+  //       },
+
+  //       // 3️⃣ Order IDlarni ajratib olish
+  //       {
+  //         $addFields: {
+  //           orderIds: "$orders._id",
+  //         },
+  //       },
+
+  //       // 4️⃣ Expenslarni biriktirish (shu orderlarga bog‘lab, currency bilan)
+  //       {
+  //         $lookup: {
+  //           from: "expenses",
+  //           let: { orderIds: "$orderIds" },
+  //           as: "payments",
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 $expr: { $in: ["$order_id", "$$orderIds"] },
+  //                 from: "client",
+  //                 deleted: false,
+  //               },
+  //             },
+  //             // expense valyutasini olish
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+  //             {
+  //               $addFields: {
+  //                 amountBase: {
+  //                   $multiply: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+  //                 },
+  //               },
+  //             },
+  //             // shu partner bo'yicha jami tushgan pul (bazaviy valyutada)
+  //             {
+  //               $group: {
+  //                 _id: null,
+  //                 totalPaidBase: { $sum: "$amountBase" },
+  //               },
+  //             },
+  //           ],
+  //         },
+  //       },
+
+  //       // 5️⃣ Hisob-kitoblarni bajarish
+  //       {
+  //         $project: {
+  //           fullname: 1,
+  //           phone: 1,
+  //           address: 1,
+  //           createdAt: 1,
+  //           updatedAt: 1,
+
+  //           // 🧮 Jami orderlar soni
+  //           totalOrderLength: { $size: "$orders" },
+
+  //           // 💰 Jami narx va to‘lovlar (bazaviy valyutada)
+  //           totalPrice: { $sum: "$orders.totalPriceBase" },
+  //           paidAmount: {
+  //             $ifNull: [{ $arrayElemAt: ["$payments.totalPaidBase", 0] }, 0],
+  //           },
+  //           debt: {
+  //             $subtract: [
+  //               { $sum: "$orders.totalPriceBase" },
+  //               {
+  //                 $ifNull: [
+  //                   { $arrayElemAt: ["$payments.totalPaidBase", 0] },
+  //                   0,
+  //                 ],
+  //               },
+  //             ],
+  //           },
+  //         },
+  //       },
+  //     ]).sort({ createdAt: -1 });
+
+  //     if (!results.length) {
+  //       return response.notFound(res, "Hamkorlar topilmadi");
+  //     }
+
+  //     return response.success(res, "Hamkorlar va qarzlar ro'yxati", results);
+  //   } catch (err) {
+  //     return response.serverError(res, err.message, err);
+  //   }
+  // }
+
+  async getPartners(req, res) {
+    try {
+      let { startDate, endDate } = req.query;
+
+      // 🗓️ Sana oralig'ini tayyorlash
+      let dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter = {
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)), // kuni tugashigacha
+          },
+        };
+      }
+
+      const results = await Partner.aggregate([
+        // 1️⃣ Faqat o'chirilmagan hamkorlar
+        { $match: { deleted: false } },
+
+        // 2️⃣ Hamkorga tegishli orderlarni biriktirish (sana + currency bilan)
+        {
+          $lookup: {
+            from: "orders",
+            localField: "_id",
+            foreignField: "partner",
+            as: "orders",
+            pipeline: [
+              {
+                $match: {
+                  deleted: false,
+                  ...dateFilter, // ← shu yerda sana oraliqlari qo'llanadi
+                },
+              },
+              // order valyutasini olish
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              // totalPrice ni bazaviy valyutaga (USD) o'tkazish va yaxlitlash
+              // QOIDA: totalPriceBase = totalPrice / rate
+              {
+                $addFields: {
+                  totalPriceBase: {
+                    $round: [
+                      {
+                        $divide: [
+                          "$totalPrice",
+                          { $ifNull: ["$currency.rate", 1] },
+                        ],
+                      },
+                      2, // 2 xonali kasrga yaxlitlash
+                    ],
+                  },
+                },
+              },
+              {
+                $project: {
+                  totalPrice: 1,
+                  totalPriceBase: 1,
+                  createdAt: 1,
+                },
+              },
+            ],
+          },
+        },
+
+        // 3️⃣ Order IDlarni ajratib olish
+        {
+          $addFields: {
+            orderIds: "$orders._id",
+          },
+        },
+
+        // 4️⃣ Expenslarni biriktirish (shu orderlarga bog‘lab, currency bilan)
+        {
+          $lookup: {
+            from: "expenses",
+            let: { orderIds: "$orderIds" },
+            as: "payments",
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $in: ["$order_id", "$$orderIds"] },
+                  from: "client",
+                  deleted: false,
+                },
+              },
+              // expense valyutasini olish
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              // amountBase (USD) = amount / rate va yaxlitlash
+              {
+                $addFields: {
+                  amountBase: {
+                    $round: [
+                      {
+                        $divide: [
+                          "$amount",
+                          { $ifNull: ["$currency.rate", 1] },
+                        ],
+                      },
+                      2,
+                    ],
+                  },
+                },
+              },
+              // shu partner bo'yicha jami tushgan pul (bazaviy valyutada)
+              {
+                $group: {
+                  _id: null,
+                  totalPaidBase: { $sum: "$amountBase" },
+                },
+              },
+            ],
+          },
+        },
+
+        // 5️⃣ Hisob-kitoblarni bajarish
+        {
+          $project: {
+            fullname: 1,
+            phone: 1,
+            address: 1,
+            createdAt: 1,
+            updatedAt: 1,
+
+            // 🧮 Jami orderlar soni
+            totalOrderLength: { $size: "$orders" },
+
+            // 💰 Jami narx (bazaviy valyutada, 2 xonali)
+            totalPrice: {
+              $round: [{ $sum: "$orders.totalPriceBase" }, 2],
+            },
+
+            // 💰 Jami to‘langan summa (bazaviy valyutada, 2 xonali)
+            paidAmount: {
+              $round: [
+                {
+                  $ifNull: [
+                    { $arrayElemAt: ["$payments.totalPaidBase", 0] },
+                    0,
+                  ],
+                },
+                2,
+              ],
+            },
+
+            // 💰 Jami qarz (bazaviy valyutada, 2 xonali)
+            debt: {
+              $round: [
+                {
+                  $subtract: [
+                    { $sum: "$orders.totalPriceBase" },
+                    {
+                      $ifNull: [
+                        { $arrayElemAt: ["$payments.totalPaidBase", 0] },
+                        0,
+                      ],
+                    },
+                  ],
+                },
+                2,
+              ],
+            },
+          },
+        },
+
+        // 6️⃣ Sort
+        { $sort: { createdAt: -1 } },
+      ]);
+
+      if (!results.length) {
+        return response.notFound(res, "Hamkorlar topilmadi");
+      }
+
+      return response.success(res, "Hamkorlar va qarzlar ro'yxati", results);
+    } catch (err) {
+      return response.serverError(res, err.message, err);
+    }
+  }
+
   // async getPartnerById(req, res) {
   //   try {
   //     const { id } = req.params;
@@ -227,29 +513,67 @@ class PartnerController {
   //         },
   //       },
 
-  //       // 2️⃣ Hamkorga tegishli orderlarni biriktirish
+  //       // 2️⃣ Hamkorga tegishli orderlarni biriktirish (valyuta bilan)
   //       {
   //         $lookup: {
   //           from: "orders",
   //           localField: "_id",
   //           foreignField: "partner",
-  //           pipeline: [{ $match: { deleted: false } }],
   //           as: "orders",
+  //           pipeline: [
+  //             { $match: { deleted: false } },
+
+  //             // Har bir order uchun currency ulash
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+
+  //             // totalPrice ni bazaviy valyutaga (USD) o'tkazish va yaxlitlash
+  //             // QOIDA: totalPriceBase = totalPrice / rate
+  //             {
+  //               $addFields: {
+  //                 totalPriceBase: {
+  //                   $round: [
+  //                     {
+  //                       $divide: [
+  //                         "$totalPrice",
+  //                         { $ifNull: ["$currency.rate", 1] },
+  //                       ],
+  //                     },
+  //                     2, // 2 xonali kasrga yaxlitlash
+  //                   ],
+  //                 },
+  //                 currencyRate: { $ifNull: ["$currency.rate", 1] },
+  //                 currencyName: "$currency.name",
+  //               },
+  //             },
+
+  //             {
+  //               $project: {
+  //                 currency: 0,
+  //               },
+  //             },
+  //           ],
   //         },
   //       },
 
-  //       // 3️⃣ Order IDlarni ajratib olish
-  //       {
-  //         $addFields: {
-  //           orderIds: "$orders._id",
-  //         },
-  //       },
-
-  //       // 4️⃣ Expenslarni biriktirish
+  //       // 3️⃣ Har bir order uchun to'lovlarni (client expenses) valyuta bilan hisoblash
   //       {
   //         $lookup: {
   //           from: "expenses",
-  //           let: { orderIds: "$orderIds" },
+  //           let: { orderIds: "$orders._id" },
+  //           as: "orderPayments",
   //           pipeline: [
   //             {
   //               $match: {
@@ -258,37 +582,133 @@ class PartnerController {
   //                 deleted: false,
   //               },
   //             },
+
+  //             // Har bir expense uchun currency ulash
+  //             {
+  //               $lookup: {
+  //                 from: "currencies",
+  //                 localField: "currency_id",
+  //                 foreignField: "_id",
+  //                 as: "currency",
+  //               },
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: "$currency",
+  //                 preserveNullAndEmptyArrays: true,
+  //               },
+  //             },
+
+  //             // amountBase (USD) = amount / rate va yaxlitlash
+  //             {
+  //               $addFields: {
+  //                 amountBase: {
+  //                   $round: [
+  //                     {
+  //                       $divide: [
+  //                         "$amount",
+  //                         { $ifNull: ["$currency.rate", 1] },
+  //                       ],
+  //                     },
+  //                     2,
+  //                   ],
+  //                 },
+  //               },
+  //             },
+
+  //             // Har bir order bo'yicha jami to'lov (bazaviy valyutada)
   //             {
   //               $group: {
-  //                 _id: null,
-  //                 totalPaid: { $sum: "$amount" },
+  //                 _id: "$order_id", // shu yerda _id = order_id
+  //                 paidForOrderBase: { $sum: "$amountBase" },
   //               },
   //             },
   //           ],
-  //           as: "payments",
   //         },
   //       },
 
-  //       // 5️⃣ Hisob-kitoblarni bajarish
+  //       // 4️⃣ Orderlarni to'lovlar bilan birlashtirish
+  //       {
+  //         $addFields: {
+  //           orders: {
+  //             $map: {
+  //               input: "$orders",
+  //               as: "order",
+  //               in: {
+  //                 $let: {
+  //                   vars: {
+  //                     payment: {
+  //                       $arrayElemAt: [
+  //                         {
+  //                           $filter: {
+  //                             input: "$orderPayments",
+  //                             as: "p",
+  //                             cond: { $eq: ["$$p._id", "$$order._id"] },
+  //                             // $$p._id => groupdagi _id (order_id)
+  //                             // $$order._id => orderning _id si
+  //                           },
+  //                         },
+  //                         0,
+  //                       ],
+  //                     },
+  //                   },
+  //                   in: {
+  //                     $mergeObjects: [
+  //                       "$$order",
+  //                       {
+  //                         // Shu order bo'yicha to'langan summa (bazaviy valyutada, yaxlit)
+  //                         paidAmountBase: {
+  //                           $round: [
+  //                             { $ifNull: ["$$payment.paidForOrderBase", 0] },
+  //                             2,
+  //                           ],
+  //                         },
+  //                         // Qolgan qarz (bazaviy valyutada, yaxlit)
+  //                         remainingPriceBase: {
+  //                           $round: [
+  //                             {
+  //                               $subtract: [
+  //                                 "$$order.totalPriceBase",
+  //                                 {
+  //                                   $ifNull: ["$$payment.paidForOrderBase", 0],
+  //                                 },
+  //                               ],
+  //                             },
+  //                             2,
+  //                           ],
+  //                         },
+  //                       },
+  //                     ],
+  //                   },
+  //                 },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+
+  //       // 5️⃣ Umumiy hisob-kitoblar (hammasi bazaviy valyutada, yaxlitlangan)
   //       {
   //         $project: {
   //           fullname: 1,
   //           phone: 1,
   //           address: 1,
-  //           // Hamkorning barcha fieldlari
+  //           orders: 1,
+
+  //           // Jami order summasi (bazaviy valyutada, 2 xonali)
   //           totalPrice: {
-  //             $sum: "$orders.totalPrice",
+  //             $round: [{ $sum: "$orders.totalPriceBase" }, 2],
   //           },
+
+  //           // Jami to'langan summa (bazaviy valyutada, 2 xonali)
   //           paidAmount: {
-  //             $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0],
+  //             $round: [{ $sum: "$orders.paidAmountBase" }, 2],
   //           },
+
+  //           // Jami qarz (bazaviy valyutada, 2 xonali)
   //           debt: {
-  //             $subtract: [
-  //               { $sum: "$orders.totalPrice" },
-  //               { $ifNull: [{ $arrayElemAt: ["$payments.totalPaid", 0] }, 0] },
-  //             ],
+  //             $round: [{ $sum: "$orders.remainingPriceBase" }, 2],
   //           },
-  //           orders: 1, // Agar orderlarni ham qaytarish kerak bo'lsa
   //         },
   //       },
   //     ]);
@@ -316,38 +736,119 @@ class PartnerController {
           },
         },
 
-        // 2️⃣ Hamkorga tegishli orderlarni biriktirish
+        // 2️⃣ Hamkorga tegishli orderlarni biriktirish (valyuta bilan)
         {
           $lookup: {
             from: "orders",
             localField: "_id",
             foreignField: "partner",
-            pipeline: [{ $match: { deleted: false } }],
             as: "orders",
+            pipeline: [
+              { $match: { deleted: false } },
+
+              // 🔥 ENG MUHIMI: orderlarni createdAt bo'yicha yangi → eski tartiblash
+              { $sort: { createdAt: -1 } },
+
+              // Har bir order uchun currency ulash
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+
+              // totalPrice ni bazaviy valyutaga (USD) o'tkazish va yaxlitlash
+              {
+                $addFields: {
+                  totalPriceBase: {
+                    $round: [
+                      {
+                        $divide: [
+                          "$totalPrice",
+                          { $ifNull: ["$currency.rate", 1] },
+                        ],
+                      },
+                      2, // 2 xonali kasrga yaxlitlash
+                    ],
+                  },
+                  currencyRate: { $ifNull: ["$currency.rate", 1] },
+                  currencyName: "$currency.name",
+                },
+              },
+
+              {
+                $project: {
+                  currency: 0,
+                },
+              },
+            ],
           },
         },
 
-        // 3️⃣ Har bir order uchun to'lovlarni hisoblash
+        // 3️⃣ Har bir order uchun to'lovlarni (client expenses) valyuta bilan hisoblash
         {
           $lookup: {
             from: "expenses",
-            let: { orderId: "$orders._id" },
+            let: { orderIds: "$orders._id" },
+            as: "orderPayments",
             pipeline: [
               {
                 $match: {
-                  $expr: { $in: ["$order_id", "$$orderId"] },
+                  $expr: { $in: ["$order_id", "$$orderIds"] },
                   from: "client",
                   deleted: false,
                 },
               },
+
+              // Har bir expense uchun currency ulash
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+
+              // amountBase (USD) = amount / rate va yaxlitlash
+              {
+                $addFields: {
+                  amountBase: {
+                    $round: [
+                      {
+                        $divide: [
+                          "$amount",
+                          { $ifNull: ["$currency.rate", 1] },
+                        ],
+                      },
+                      2,
+                    ],
+                  },
+                },
+              },
+
+              // Har bir order bo'yicha jami to'lov (bazaviy valyutada)
               {
                 $group: {
-                  _id: "$order_id",
-                  paidForOrder: { $sum: "$amount" },
+                  _id: "$order_id", // shu yerda _id = order_id
+                  paidForOrderBase: { $sum: "$amountBase" },
                 },
               },
             ],
-            as: "orderPayments",
           },
         },
 
@@ -359,81 +860,77 @@ class PartnerController {
                 input: "$orders",
                 as: "order",
                 in: {
-                  $mergeObjects: [
-                    "$$order",
-                    {
-                      paidAmount: {
-                        $let: {
-                          vars: {
-                            payment: {
-                              $arrayElemAt: [
-                                {
-                                  $filter: {
-                                    input: "$orderPayments",
-                                    cond: {
-                                      $eq: ["$$this._id", "$$order._id"],
-                                    },
-                                  },
-                                },
-                                0,
-                              ],
-                            },
-                          },
-                          in: {
-                            $ifNull: ["$$payment.paidForOrder", 0],
-                          },
-                        },
-                      },
-                      remainingPrice: {
-                        $subtract: [
-                          "$$order.totalPrice",
+                  $let: {
+                    vars: {
+                      payment: {
+                        $arrayElemAt: [
                           {
-                            $let: {
-                              vars: {
-                                payment: {
-                                  $arrayElemAt: [
-                                    {
-                                      $filter: {
-                                        input: "$orderPayments",
-                                        cond: {
-                                          $eq: ["$$this._id", "$$order._id"],
-                                        },
-                                      },
-                                    },
-                                    0,
-                                  ],
-                                },
-                              },
-                              in: {
-                                $ifNull: ["$$payment.paidForOrder", 0],
-                              },
+                            $filter: {
+                              input: "$orderPayments",
+                              as: "p",
+                              cond: { $eq: ["$$p._id", "$$order._id"] },
                             },
                           },
+                          0,
                         ],
                       },
                     },
-                  ],
+                    in: {
+                      $mergeObjects: [
+                        "$$order",
+                        {
+                          // Shu order bo'yicha to'langan summa (bazaviy valyutada, yaxlit)
+                          paidAmountBase: {
+                            $round: [
+                              { $ifNull: ["$$payment.paidForOrderBase", 0] },
+                              2,
+                            ],
+                          },
+                          // Qolgan qarz (bazaviy valyutada, yaxlit)
+                          remainingPriceBase: {
+                            $round: [
+                              {
+                                $subtract: [
+                                  "$$order.totalPriceBase",
+                                  {
+                                    $ifNull: ["$$payment.paidForOrderBase", 0],
+                                  },
+                                ],
+                              },
+                              2,
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
                 },
               },
             },
           },
         },
 
-        // 5️⃣ Umumiy hisob-kitoblar
+        // 5️⃣ Umumiy hisob-kitoblar (hammasi bazaviy valyutada, yaxlitlangan)
         {
           $project: {
             fullname: 1,
             phone: 1,
             address: 1,
             orders: 1,
+
+            // Jami order summasi (bazaviy valyutada, 2 xonali)
             totalPrice: {
-              $sum: "$orders.totalPrice",
+              $round: [{ $sum: "$orders.totalPriceBase" }, 2],
             },
+
+            // Jami to'langan summa (bazaviy valyutada, 2 xonali)
             paidAmount: {
-              $sum: "$orders.paidAmount",
+              $round: [{ $sum: "$orders.paidAmountBase" }, 2],
             },
+
+            // Jami qarz (bazaviy valyutada, 2 xonali)
             debt: {
-              $sum: "$orders.remainingPrice",
+              $round: [{ $sum: "$orders.remainingPriceBase" }, 2],
             },
           },
         },

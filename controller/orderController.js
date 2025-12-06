@@ -6,6 +6,7 @@ const Cars = require("../model/carModel");
 const Parts = require("../model/partModel");
 const Trailers = require("../model/trailerModel");
 const Expenses = require("../model/expensesModel");
+const SalaryController = require("./salaryController");
 
 class OrderController {
   async getOrders(req, res) {
@@ -100,6 +101,7 @@ class OrderController {
               start_fuel: req.body.start_fuel,
               start_probeg: req.body.start_probeg,
               driver: req.body.driver,
+              totalFuelAvailable: req.body.start_fuel,
             },
           ],
           {
@@ -163,7 +165,7 @@ class OrderController {
       if (newOrder[0].car) {
         await Cars.findByIdAndUpdate(
           newOrder[0].car,
-          { status: false },
+          { status: true },
           { session }
         );
       }
@@ -181,7 +183,7 @@ class OrderController {
       if (newOrder[0].trailer) {
         await Trailers.findByIdAndUpdate(
           newOrder[0].trailer,
-          { status: false },
+          { status: true },
           { session }
         );
       }
@@ -305,6 +307,7 @@ class OrderController {
             await car.save();
           }
         }
+        await SalaryController.addOrderSalaryToDriver(order._id);
       }
 
       return responses.success(res, "Buyurtma o'zgartirildi", order);
@@ -345,7 +348,9 @@ class OrderController {
         .populate("car", "title number")
         .populate("trailer", "number")
         .populate("partner", "fullname")
-        .populate("part_id", "name");
+        .populate("part_id", "name")
+        .populate("currency_id", "name rate")
+        .populate("driver_salary_currency_id", "name rate");
       if (!orders.length)
         return responses.notFound(res, "Buyurtmalar topilmadi", []);
       return responses.success(res, "Buyurtmalar topildi", orders);
@@ -363,6 +368,8 @@ class OrderController {
         .populate("trailer", "number")
         .populate("partner", "fullname")
         .populate("part_id", "name")
+        .select("-currency_id")
+        .select("-driver_salary_currency_id")
         .sort({ createdAt: -1 });
       if (!orders.length)
         return responses.notFound(res, "Buyurtmalar topilmadi", []);

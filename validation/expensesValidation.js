@@ -39,6 +39,17 @@ const expenseValidation = (req, res, next) => {
         default: "naqd",
       },
       currency_id: { type: "string" },
+      client_id: {
+        type: "string",
+        pattern: "^[0-9a-fA-F]{24}$",
+      },
+      receiver: {
+        type: "string",
+        pattern: "^[0-9a-fA-F]{24}$",
+      },
+      receiverModel: {
+        type: "string",
+      },
     },
     required: [
       "name",

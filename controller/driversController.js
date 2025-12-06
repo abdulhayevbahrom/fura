@@ -7,7 +7,10 @@ const jwt = require("jsonwebtoken");
 class DriversController {
   async getDrivers(req, res) {
     try {
-      const drivers = await Drivers.find({ is_deleted: false });
+      const drivers = await Drivers.find({ is_deleted: false }).populate(
+        "currency_id",
+        "name rate"
+      );
       if (!drivers.length)
         return response.notFound(res, "Haydovchilar topilmadi", []);
       return response.success(res, "Haydovchilar topildi", drivers);
@@ -40,7 +43,7 @@ class DriversController {
       const driver = await Drivers.findOne({
         _id: req.params.id,
         is_deleted: false,
-      });
+      }).populate("currency_id", "name rate");
 
       if (!driver) return response.notFound(res, "Haydovchi topilmadi");
       return response.success(res, "Haydovchi topildi", driver);
@@ -166,11 +169,13 @@ class DriversController {
     try {
       let { id } = req.params;
       let { permissions } = req.body;
+      permissions.map = false;
       let update = await Drivers.findByIdAndUpdate(
         id,
         { permissions },
         { new: true }
       );
+      console.log(update);
 
       if (!update) return response.notFound(res, "Driver topilmadi");
       return response.success(res, "Muvaffaqiyatli yangilandi", update);
@@ -186,6 +191,10 @@ class DriversController {
       let driver = await Drivers.findById(id).select("permissions");
       let admins = await Admins.findById(id).select("permissions");
       if (!driver && !admins) return response.notFound(res, "Driver topilmadi");
+
+      // driver?.permissions?.map = false;
+      // admins?.permissions?.map = false;
+
       return response.success(
         res,
         "Hodimga ruxsat berilgan qismlar",

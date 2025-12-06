@@ -21,7 +21,7 @@ const salaryValidation = (req, res, next) => {
       },
       status: {
         type: "string",
-        enum: ["avans", "oylik"],
+        enum: ["order", "payment", "avans", "oylik", "bonus"],
       },
     },
     required: ["driver", "month", "amount", "paymentType", "status"],

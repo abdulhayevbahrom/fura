@@ -141,10 +141,10 @@ router.put("/partners/update/:id", partnerController.updatePartner);
 // SALARY
 const salaryController = require("../controller/salaryController");
 
-router.post("/salary/pay", salaryController.payToDriver);
+router.get("/salary/payments", salaryController.getAllPayments);
 router.get("/salary/drivers", salaryController.getDrivers);
-router.get("/salary/payments", salaryController.getAllPaymetns);
-router.get("/salary/:driver", salaryController.getByDriverId);
+router.get("/salary/:id", salaryController.getPaymentByDriverId);
+router.post("/salary/payment", salaryController.paymentToDriver);
 
 // DASHBOARD
 const dashboardController = require("../controller/dashboardController");
@@ -178,5 +178,16 @@ router.get("/fuel/car/:id", fuelController.getByCarId);
 router.post("/fuel/create", fuelController.create);
 router.delete("/fuel/delete/:id", fuelController.delete);
 router.put("/fuel/update/:id", fuelController.update);
+
+// MAP
+const mapController = require("../controller/mapController");
+router.get("/map/all", mapController.getMap);
+router.post("/map/update", mapController.update);
+
+// car statistic
+const statistic = require("../controller/statisticController");
+router.get("/car/statistic", statistic.getStatistic);
+router.get("/driver/orders", statistic.getDriversByOrders);
+router.get("/driver/expenses", statistic.getDriversByLeastExpense);
 
 module.exports = router;

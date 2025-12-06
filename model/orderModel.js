@@ -9,6 +9,7 @@ const orderSchema = new Schema(
     partner: { type: Schema.Types.ObjectId, ref: "partners" },
     driver_salary: { type: Number, default: 0 },
     driver_salary_currency_id: { type: Schema.Types.ObjectId, ref: "currency" },
+    driver_salary_paid: { type: Boolean, default: false }, // YANGI: bir marta balansga qo‘shish nazorati
     status: { type: Boolean, default: true },
     state: {
       type: String,

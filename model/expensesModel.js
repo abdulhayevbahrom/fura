@@ -21,6 +21,23 @@ const expenseSchema = new Schema(
     type: { type: String, enum: ["repair", "order_expense", "office_expense"] },
     vehicleId: { type: String, default: null },
     cpuId: { type: String, default: null },
+    // YANGI: haydovchi va mijoz // bu qism faqat haydovchi mijozdan pul olganA ISHLAYDI
+    // YANGI: kim olgan bo‘lsa – driver ham, boshliq/manager ham shu yerda
+    client_id: {
+      type: Schema.Types.ObjectId,
+      refPath: "partners",
+      default: null,
+    },
+    receiver: {
+      type: Schema.Types.ObjectId,
+      refPath: "receiverModel",
+      default: null,
+    },
+    receiverModel: {
+      type: String,
+      enum: ["drivers", "Admins"],
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -28,26 +45,3 @@ const expenseSchema = new Schema(
 );
 
 module.exports = model("expenses", expenseSchema);
-
-// {
-//             "car": {
-//                 "_id": "68ecf2034e6fba7b63edf2ba",
-//                 "title": "Chevrolet Malibu",
-//                 "number": "01A123AA",
-//                 "year": 2020,
-//                 "fuelFor100km": 8.5,
-//                 "probeg": 221700,
-//                 "licens": "2025-12-31",
-//                 "sugurta": "2025-06-30",
-//                 "status": false,
-//                 "createdAt": "2025-10-13T12:35:15.583Z",
-//                 "updatedAt": "2025-10-15T10:46:07.083Z",
-//                 "__v": 0
-//             },
-//             "totalOrders": 6,
-//             "totalPrice": 1004600,
-//             "totalExpenses": 2500,
-//             "totalRepairPrice": 0,
-//             "driverSalary": 101385,
-//             "profit": 903215
-//         },

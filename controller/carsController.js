@@ -439,22 +439,175 @@ class carsController {
     }
   }
 
+  // async getStatictics(req, res) {
+  //   try {
+  //     let { startDate, endDate } = req.query;
+  //     let matchStage = { deleted: { $ne: true } };
+
+  //     if (startDate && endDate) {
+  //       matchStage.createdAt = {
+  //         $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
+  //         $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+  //       };
+  //     }
+
+  //     const data = await Cars.aggregate([
+  //       {
+  //         $match: matchStage,
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: "orders",
+  //           localField: "_id",
+  //           foreignField: "car",
+  //           as: "orders",
+  //           pipeline: [
+  //             { $match: { deleted: false } },
+  //             {
+  //               $lookup: {
+  //                 from: "expenses",
+  //                 localField: "_id",
+  //                 foreignField: "order_id",
+  //                 as: "order_expenses",
+  //                 pipeline: [
+  //                   { $match: { type: "order_expense", deleted: false } },
+  //                   { $project: { amount: 1 } },
+  //                 ],
+  //               },
+  //             },
+  //             {
+  //               $project: {
+  //                 totalPrice: 1,
+  //                 driver_salary: 1,
+  //                 order_expenses: 1,
+  //               },
+  //             },
+  //           ],
+  //         },
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: "expenses",
+  //           localField: "_id",
+  //           foreignField: "car",
+  //           as: "repairs",
+  //           pipeline: [
+  //             { $match: { type: "repair", deleted: false } },
+  //             { $project: { amount: 1 } },
+  //           ],
+  //         },
+  //       },
+  //       {
+  //         $addFields: {
+  //           totalOrders: { $size: "$orders" },
+  //           totalPrice: { $sum: "$orders.totalPrice" },
+  //           driverSalary: { $sum: "$orders.driver_salary" },
+  //           totalRepairPrice: { $sum: "$repairs.amount" },
+  //           totalOrderExpense: {
+  //             $sum: {
+  //               $map: {
+  //                 input: "$orders.order_expenses",
+  //                 as: "expList",
+  //                 in: { $sum: "$$expList.amount" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //       {
+  //         $addFields: {
+  //           totalExpenses: {
+  //             $add: [
+  //               "$totalRepairPrice",
+  //               "$totalOrderExpense",
+  //               "$driverSalary",
+  //             ],
+  //           },
+  //           profit: {
+  //             $subtract: [
+  //               "$totalPrice",
+  //               { $add: ["$totalRepairPrice", "$driverSalary"] },
+  //             ],
+  //           },
+  //         },
+  //       },
+  //       {
+  //         $project: {
+  //           vehicles: 0,
+  //           cpu: 0,
+  //           orders: 0,
+  //           repairs: 0,
+  //           totalOrderExpense: 0,
+  //         },
+  //       },
+  //       {
+  //         $addFields: {
+  //           car: {
+  //             _id: "$_id",
+  //             title: "$title",
+  //             number: "$number",
+  //             year: "$year",
+  //             fuelFor100km: "$fuelFor100km",
+  //             probeg: "$probeg",
+  //             licens: "$licens",
+  //             sugurta: "$sugurta",
+  //             status: "$status",
+  //             createdAt: "$createdAt",
+  //             updatedAt: "$updatedAt",
+  //             __v: "$__v",
+  //           },
+  //         },
+  //       },
+  //       {
+  //         $project: {
+  //           _id: 0,
+  //           title: 0,
+  //           number: 0,
+  //           year: 0,
+  //           fuelFor100km: 0,
+  //           probeg: 0,
+  //           licens: 0,
+  //           sugurta: 0,
+  //           status: 0,
+  //           createdAt: 0,
+  //           updatedAt: 0,
+  //           __v: 0,
+  //         },
+  //       },
+  //     ]);
+
+  //     if (!data.length)
+  //       return response.notFound(res, "Ma'lumotlar topilmadi", []);
+
+  //     return response.success(res, "Ma'lumotlar", data);
+  //   } catch (error) {
+  //     return response.serverError(res, error.message, error);
+  //   }
+  // }
+
   async getStatictics(req, res) {
     try {
       let { startDate, endDate } = req.query;
-      let matchStage = { deleted: { $ne: true } };
 
+      // 🗓️ Sana filtri – orders va expenses.createdAt uchun
+      let dateMatch = {};
       if (startDate && endDate) {
-        matchStage.createdAt = {
-          $gte: new Date(new Date(startDate).setHours(0, 0, 0)),
-          $lte: new Date(new Date(endDate).setHours(23, 59, 59)),
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+
+        dateMatch.createdAt = {
+          $gte: start,
+          $lte: end,
         };
       }
 
       const data = await Cars.aggregate([
         {
-          $match: matchStage,
+          $match: { deleted: { $ne: true } },
         },
+
+        // 1) ORDERLAR
         {
           $lookup: {
             from: "orders",
@@ -462,7 +615,45 @@ class carsController {
             foreignField: "car",
             as: "orders",
             pipeline: [
-              { $match: { deleted: false } },
+              {
+                $match: {
+                  deleted: false,
+                  state: "finished", // <<<<<<<<<<<<<< FAQAT FINISHED ORDERLAR
+                  ...dateMatch,
+                },
+              },
+              // Order valyutasi (totalPrice uchun)
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "orderCurrency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$orderCurrency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              // Haydovchi oyligi valyutasi (driver_salary uchun)
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "driver_salary_currency_id",
+                  foreignField: "_id",
+                  as: "salaryCurrency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$salaryCurrency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+
+              // ORDER EXPENSES (type: "order_expense")
               {
                 $lookup: {
                   from: "expenses",
@@ -470,21 +661,76 @@ class carsController {
                   foreignField: "order_id",
                   as: "order_expenses",
                   pipeline: [
-                    { $match: { type: "order_expense", deleted: false } },
-                    { $project: { amount: 1 } },
+                    {
+                      $match: {
+                        type: "order_expense",
+                        deleted: false,
+                        ...dateMatch,
+                      },
+                    },
+                    {
+                      $lookup: {
+                        from: "currencies",
+                        localField: "currency_id",
+                        foreignField: "_id",
+                        as: "currency",
+                      },
+                    },
+                    {
+                      $unwind: {
+                        path: "$currency",
+                        preserveNullAndEmptyArrays: true,
+                      },
+                    },
+                    {
+                      $addFields: {
+                        amountBase: {
+                          $divide: [
+                            "$amount",
+                            { $ifNull: ["$currency.rate", 1] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $project: {
+                        amountBase: 1,
+                      },
+                    },
                   ],
                 },
               },
+
+              // ORDERning bazaviy (USD) qiymatlari
+              {
+                $addFields: {
+                  totalPriceBase: {
+                    $divide: [
+                      "$totalPrice",
+                      { $ifNull: ["$orderCurrency.rate", 1] },
+                    ],
+                  },
+                  driverSalaryBase: {
+                    $divide: [
+                      "$driver_salary",
+                      { $ifNull: ["$salaryCurrency.rate", 1] },
+                    ],
+                  },
+                },
+              },
+
               {
                 $project: {
-                  totalPrice: 1,
-                  driver_salary: 1,
+                  totalPriceBase: 1,
+                  driverSalaryBase: 1,
                   order_expenses: 1,
                 },
               },
             ],
           },
         },
+
+        // 2) REPAIR EXPENSES (type: "repair")
         {
           $lookup: {
             from: "expenses",
@@ -492,54 +738,151 @@ class carsController {
             foreignField: "car",
             as: "repairs",
             pipeline: [
-              { $match: { type: "repair", deleted: false } },
-              { $project: { amount: 1 } },
+              {
+                $match: {
+                  type: "repair",
+                  deleted: false,
+                  ...dateMatch,
+                },
+              },
+              {
+                $lookup: {
+                  from: "currencies",
+                  localField: "currency_id",
+                  foreignField: "_id",
+                  as: "currency",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$currency",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $addFields: {
+                  amountBase: {
+                    $divide: ["$amount", { $ifNull: ["$currency.rate", 1] }],
+                  },
+                },
+              },
+              {
+                $project: {
+                  amountBase: 1,
+                },
+              },
             ],
           },
         },
+
+        // 3) CAR darajasida umumiy hisob-kitob (HAMMASI USD)
         {
           $addFields: {
+            // zakazlar soni
             totalOrders: { $size: "$orders" },
-            totalPrice: { $sum: "$orders.totalPrice" },
-            driverSalary: { $sum: "$orders.driver_salary" },
-            totalRepairPrice: { $sum: "$repairs.amount" },
-            totalOrderExpense: {
-              $sum: {
-                $map: {
-                  input: "$orders.order_expenses",
-                  as: "expList",
-                  in: { $sum: "$$expList.amount" },
+
+            // zakazlarning umumiy puli
+            totalPrice: {
+              $round: [
+                {
+                  $ifNull: [{ $sum: "$orders.totalPriceBase" }, 0],
                 },
-              },
+                2,
+              ],
+            },
+
+            // zakazlardagi haydovchilar umumiy puli
+            driverSalary: {
+              $round: [
+                {
+                  $ifNull: [{ $sum: "$orders.driverSalaryBase" }, 0],
+                },
+                2,
+              ],
+            },
+
+            // type === "repair" bo'lgan xarajatlar puli
+            totalRepairPrice: {
+              $round: [
+                {
+                  $ifNull: [{ $sum: "$repairs.amountBase" }, 0],
+                },
+                2,
+              ],
+            },
+
+            // type === "order_expense" bo'lgan xarajatlar puli
+            totalOrderExpense: {
+              $round: [
+                {
+                  $ifNull: [
+                    {
+                      $sum: {
+                        $map: {
+                          input: "$orders.order_expenses",
+                          as: "expList",
+                          in: { $sum: "$$expList.amountBase" },
+                        },
+                      },
+                    },
+                    0,
+                  ],
+                },
+                2,
+              ],
             },
           },
         },
+
+        // 4) totalExpenses va profit ni FORMULAGA MUVOFIQ hisoblash
         {
           $addFields: {
+            // totalExpenses = driverSalary + totalRepairPrice + totalOrderExpense
             totalExpenses: {
-              $add: [
-                "$totalRepairPrice",
-                "$totalOrderExpense",
-                "$driverSalary",
+              $round: [
+                {
+                  $add: [
+                    { $ifNull: ["$driverSalary", 0] },
+                    { $ifNull: ["$totalRepairPrice", 0] },
+                    { $ifNull: ["$totalOrderExpense", 0] },
+                  ],
+                },
+                2,
               ],
             },
+
+            // profit = totalPrice - totalExpenses
             profit: {
-              $subtract: [
-                "$totalPrice",
-                { $add: ["$totalRepairPrice", "$driverSalary"] },
+              $round: [
+                {
+                  $subtract: [
+                    { $ifNull: ["$totalPrice", 0] },
+                    {
+                      $add: [
+                        { $ifNull: ["$driverSalary", 0] },
+                        { $ifNull: ["$totalRepairPrice", 0] },
+                        { $ifNull: ["$totalOrderExpense", 0] },
+                      ],
+                    },
+                  ],
+                },
+                2,
               ],
             },
           },
         },
+
+        // keraksiz fieldlarni tozalash
         {
           $project: {
             vehicles: 0,
             cpu: 0,
             orders: 0,
             repairs: 0,
-            totalOrderExpense: 0,
           },
         },
+
+        // car obyektini ichiga joylash
         {
           $addFields: {
             car: {
