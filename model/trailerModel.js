@@ -27,7 +27,7 @@ const trailerSchema = new Schema({
     right_center_2: [vehicleSchema],
     extra_tir: [vehicleSchema],
   },
-  status: { type: Boolean, default: false },
+  status: { type: Boolean, default: true },
   deleted: { type: Boolean, default: false },
 });
 

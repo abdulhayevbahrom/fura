@@ -42,7 +42,7 @@ const carsSchema = new Schema(
       extra_tir: [vehicleSchema],
     },
     cpu: [cpuSchema],
-    status: { type: Boolean, default: false },
+    status: { type: Boolean, default: true },
     deleted: { type: Boolean, default: false },
   },
   {

@@ -165,7 +165,7 @@ class OrderController {
       if (newOrder[0].car) {
         await Cars.findByIdAndUpdate(
           newOrder[0].car,
-          { status: true },
+          { status: false },
           { session }
         );
       }
@@ -183,7 +183,7 @@ class OrderController {
       if (newOrder[0].trailer) {
         await Trailers.findByIdAndUpdate(
           newOrder[0].trailer,
-          { status: true },
+          { status: false },
           { session }
         );
       }

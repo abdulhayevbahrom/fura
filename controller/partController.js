@@ -732,14 +732,14 @@ class partController {
       // Mashina statusini yangilash
       await Cars.findOneAndUpdate(
         { _id: order.car },
-        { status: false, probeg: finalEndProbeg },
+        { status: true, probeg: finalEndProbeg },
         { new: true, session }
       );
 
       // Trailer statusini yangilash
       await Trailers.findOneAndUpdate(
         { _id: order.trailer },
-        { status: false },
+        { status: true },
         { new: true, session }
       );
 

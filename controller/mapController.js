@@ -5,6 +5,8 @@ let Drivers = require("../model/driversModel");
 class MapController {
   async update(req, res) {
     try {
+      // console.log(req.body);
+
       let io = req.app.get("socket");
       let { driver, lat, long, speed } = req.body;
       // bolmasa yaratadi aks holda yangilaydi
