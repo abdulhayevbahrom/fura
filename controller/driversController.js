@@ -151,8 +151,7 @@ class DriversController {
       if (!isMatch) return response.error(res, "Login yoki parol xato");
       const token = jwt.sign(
         { id: driver._id, login: driver.login },
-        process.env.JWT_SECRET_KEY,
-        { expiresIn: "1w" }
+        process.env.JWT_SECRET_KEY
       );
 
       return response.success(res, "Kirish muvaffaqiyatli", {
