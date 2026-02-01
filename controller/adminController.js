@@ -73,7 +73,7 @@ class AdminController {
       const updatedAdmin = await adminsDB.findByIdAndUpdate(
         req.params.id,
         updateData,
-        { new: true }
+        { new: true },
       );
 
       if (!updatedAdmin)
@@ -118,7 +118,6 @@ class AdminController {
       const token = jwt.sign(
         { id: employee._id, login: employee.login },
         process.env.JWT_SECRET_KEY,
-        { expiresIn: "1w" }
       );
 
       response.success(res, "Kirish muvaffaqiyatli", {
